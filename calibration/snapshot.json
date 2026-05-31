@@ -1,0 +1,57 @@
+{
+  "schema": "ultracos-calib-v1",
+  "snapshot_version": "2026.05.31",
+  "tokenizer_fingerprint": "uncalibrated-v0",
+  "models": {
+    "claude-haiku-4-5-20251001": {
+      "tokens_per_char": {
+        "_default": 0.1885
+      },
+      "confidence": {
+        "_default": 0.938
+      }
+    },
+    "claude-opus-4-7": {
+      "tokens_per_char": {
+        "_default": 0.267
+      },
+      "confidence": {
+        "_default": 0.939
+      }
+    },
+    "claude-sonnet-4-6": {
+      "tokens_per_char": {
+        "_default": 0.2116
+      },
+      "confidence": {
+        "_default": 0.911
+      }
+    },
+    "claude-sonnet-4-5": {
+      "tokens_per_char": {
+        "_default": 0.1735
+      },
+      "confidence": {
+        "_default": 0.688
+      }
+    },
+    "claude-haiku-4-5": {
+      "tokens_per_char": {
+        "_default": 0.1876
+      },
+      "confidence": {
+        "_default": 0.654
+      }
+    },
+    "claude-opus-4-8": {
+      "tokens_per_char": {
+        "_default": 0.2706
+      },
+      "confidence": {
+        "_default": 0.926
+      }
+    }
+  },
+  "fallback_tokens_per_char": 0.25,
+  "min_confidence_to_use": 0.8
+}
