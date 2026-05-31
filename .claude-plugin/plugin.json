@@ -1,0 +1,23 @@
+{
+  "name": "ultracos",
+  "version": "0.3.0",
+  "description": "Two-register prompting convention for Claude Code: dense ASCII form for internal reasoning, normal prose for user-visible output. Default deterministic codec + opt-in own-trained ML sidecar (no API key, no vendor). Ships a skill, UserPromptSubmit + PreCompact + PostToolUse hooks, lossless tool-result codec (ANSI strip + JSON minify + blank-collapse + trailing marker + data-shape guard + schema-tag prefix + break-even guard), and a 4-arm token benchmark. Fail-open on every path. Run bench/bench.py for measured numbers.",
+  "author": {
+    "name": "Mikko Parkkola",
+    "email": "mikko.parkkola@iki.fi"
+  },
+  "homepage": "https://github.com/MikkoParkkola/ultracos",
+  "repository": "https://github.com/MikkoParkkola/ultracos",
+  "license": "PolyForm-Noncommercial-1.0.0",
+  "category": "Token Optimization",
+  "keywords": [
+    "token-compression",
+    "codec",
+    "deduplication",
+    "compaction",
+    "hook",
+    "observability",
+    "context-window",
+    "claude-code"
+  ]
+}

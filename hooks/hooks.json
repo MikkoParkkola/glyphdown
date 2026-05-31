@@ -1,0 +1,75 @@
+{
+  "description": "UltraCoS — register SessionStart skill-level filter, UserPromptSubmit detector, PreToolUse history-dedup ring, PreCompact summary-form mandate, and PostToolUse tool-result codec (P0 regression-immunity bundle: ANSI strip + JSON minify + blank-collapse + trailing marker + data short-circuit + schema-tag prefix + break-even guard). All hooks fail open: any exception emits {\"continue\":true} and exits 0 so they cannot block input, tool dispatch, compaction, or tool results.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh ${CLAUDE_PLUGIN_ROOT}/hooks/_run.sh ${CLAUDE_PLUGIN_ROOT}/hooks/PreToolUse/ultracos_history_dedup.py",
+            "timeout": 3
+          },
+          {
+            "type": "command",
+            "command": "sh ${CLAUDE_PLUGIN_ROOT}/hooks/_run.sh ${CLAUDE_PLUGIN_ROOT}/hooks/PreToolUse/restart_batcher_detect.py",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh ${CLAUDE_PLUGIN_ROOT}/hooks/_run.sh ${CLAUDE_PLUGIN_ROOT}/hooks/SessionStart/ultracos-skill-loader.py",
+            "timeout": 3
+          },
+          {
+            "type": "command",
+            "command": "sh ${CLAUDE_PLUGIN_ROOT}/hooks/_run.sh ${CLAUDE_PLUGIN_ROOT}/hooks/SessionStart/restart_batcher_clear.py",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh ${CLAUDE_PLUGIN_ROOT}/hooks/_run.sh ${CLAUDE_PLUGIN_ROOT}/hooks/UserPromptSubmit/ultracos-mode-detector.py",
+            "timeout": 3
+          },
+          {
+            "type": "command",
+            "command": "sh ${CLAUDE_PLUGIN_ROOT}/hooks/_run.sh ${CLAUDE_PLUGIN_ROOT}/hooks/UserPromptSubmit/ultracos-stats-handler.py",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh ${CLAUDE_PLUGIN_ROOT}/hooks/_run.sh ${CLAUDE_PLUGIN_ROOT}/hooks/PreCompact/ultracos-compact-instructions.py",
+            "timeout": 3
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh ${CLAUDE_PLUGIN_ROOT}/hooks/_run.sh --rust posttooluse ${CLAUDE_PLUGIN_ROOT}/hooks/PostToolUse/ultracos_codec.py",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

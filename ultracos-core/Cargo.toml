@@ -1,0 +1,30 @@
+[package]
+name = "ultracos-core"
+version = "0.3.0"
+edition = "2024"
+description = "ultracos local MCP server — stats + signed-CCR + room for cache-similarity oracle"
+license = "MIT OR Apache-2.0"
+
+[[bin]]
+name = "ultracos-core"
+path = "src/main.rs"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+anyhow = "1"
+ed25519-dalek = { version = "2", features = ["std", "rand_core"] }
+rand_core = { version = "0.6", features = ["std"] }
+sha2 = "0.10"
+blake2 = "0.10"
+regex-lite = "0.1"
+hex = "0.4"
+fs2 = "0.4"
+
+[dev-dependencies]
+tempfile = "3"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true

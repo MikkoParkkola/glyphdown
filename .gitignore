@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+
+# venvs (incl. competitor-only py3.11 venv w/ torch + spacy models)
+.venv/
+.venv-*/
+venv/
+
+# bench scratch
+bench/results/*.log
+*.jsonl.tmp
+
+# OS
+.DS_Store
