@@ -78,6 +78,9 @@ tracks it.
 Every value in a published snapshot is fitted from measured token counts. The
 project does not publish performance or savings claims it has not measured.
 
+For a transparent account of the approach (without the reproducible recipe), see
+[METHODOLOGY.md](METHODOLOGY.md).
+
 ## License
 
 **PolyForm Noncommercial License 1.0.0** — free for any noncommercial use.
