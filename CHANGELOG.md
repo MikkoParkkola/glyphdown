@@ -2,6 +2,23 @@
 
 All notable changes to UltraCoS. Format: [Keep a Changelog]. Versioning: [SemVer].
 
+## [0.4.0]
+
+### Added
+- **Runtime-loadable dialect** — the ULTRACOS-L1 dialect is now a data file the
+  binary loads at startup (`ULTRACOS_DIALECT`), with the compiled-in table as the
+  bundled default and a lossless self-check on load. Customize compression with no
+  rebuild. New `ultracos-core dialect-export` dumps the default as JSON to edit.
+- **`compress-config`** — compress your static config (`CLAUDE.md`, skills, agent
+  descriptions) with the active dialect: the system prompt ships on every request,
+  so this is the only always-on saving. Dry-run by default, lossless-gated, backs
+  up to `<file>.ultracos.bak`, refuses already-dense files.
+
+### Changed
+- **README** — hero metrics, three architecture diagrams, a general-vs-model-
+  specific tokenizer section, a researched competitor landscape, a quickstart,
+  and a FAQ.
+
 ## [0.3.0]
 
 ### Added

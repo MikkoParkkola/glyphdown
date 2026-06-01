@@ -17,12 +17,12 @@ needs a paid license — see [COMMERCIAL.md](COMMERCIAL.md).
 
 | Measured | Reduction | On |
 |---|---:|---|
-| Tool-heavy session corpus (52 real fixtures) | **−31.7%** | total tokens 85,405 → 58,347 |
+| Tool-heavy session corpus (52 real fixtures) | **−31.7%** | total tokens 85,405 → 58,347 (`chars/4` proxy) |
 | Large `Bash` dumps | **−71.1%** | the noisiest payloads |
-| Instruction prose in the ULTRACOS-L1 dialect | **−44.6%** | every cached system-prompt call |
+| Instruction prose in the ULTRACOS-L1 dialect | **−44.6%** | every cached system-prompt call (Claude Opus tokens) |
 | Network calls · API keys · data leaving your machine | **0** | 100% local, fail-open |
 
-<sub>Numbers are reproducible from [`bench/`](./bench/) (`codec_bench.py`), not asserted. Dialect figure: `opus-dialect-validate-2026-05-31`. The project does not publish figures it has not measured.</sub>
+<sub>Char reduction is general; exact token % is **model-specific** — see [General vs model-specific savings](#general-vs-model-specific-savings). Numbers are reproducible from [`bench/`](./bench/) (`codec_bench.py`), not asserted; the project does not publish figures it has not measured.</sub>
 
 ## How it works
 
@@ -89,23 +89,45 @@ through untouched. To pause, set `ULTRACOS_DISABLE=1`.
 
 ## How it compares
 
-UltraCoS is one layer in the token-cost stack, not a replacement for the others —
-it composes with native caching and is a different shape from edge proxies and
-learned compressors:
+Token reduction is a crowded, genuinely diverse space. UltraCoS is a **lossless,
+in-process, agent-tool-result** compressor that stacks on native caching — it is
+not trying to be a learned compressor or a hosted proxy. The honest landscape
+(★ = GitHub stars, a maturity signal, not a quality verdict):
 
-| | UltraCoS | Anthropic cache alone | Edge proxy (e.g. Edgee) | Learned compressor (e.g. LLMLingua-2) |
+| Approach | Examples | Reversible? | Where it runs | Best at |
 |---|---|---|---|---|
-| Where it runs | in-process plugin | platform | hosted proxy hop | local model |
-| Acts on | tool results + compaction + dialect | already-cached prefixes | tool results + output | prompt text |
-| Network hop | none | n/a | yes | none (loads a model) |
-| Reversibility | lossless by meaning | lossless | partial | lossy (learned drop) |
-| API keys / signup | none | n/a | account | none |
-| Stacks with native cache | yes (independent bucket) | — | yes | yes |
-| Data residency | on your machine | platform | proxy provider | on your machine |
+| **Lossless in-process codec** (this) | **UltraCoS** (alpha) | yes (by meaning) | your machine, no hop | agent tool-results + dense compaction, stacked on cache |
+| Lossless reversible pipeline | [claw-compactor](https://github.com/open-compress/claw-compactor) (2.2k★) | yes | varies | multi-stage general-text compression |
+| Drop-in prompt compression | [leanctx](https://github.com/jia-gao/leanctx) (300★+) | varies | library | production-app prompt text |
+| Learned / lossy compression | [LLMLingua / LLMLingua-2](https://github.com/microsoft/LLMLingua) (6k★) | no (drops tokens) | local model | aggressive prompt-text reduction where some loss is acceptable |
+| Tool-call interceptor | [Crucible](https://github.com/Tetrahedroned/Crucible) | varies | in-process | nearest architecture to UltraCoS |
+| Hosted edge proxy | Edgee, `rtk`-based | partial | network hop | one layer across multiple agents / clients |
+| Output brevity ("caveman") | caveman, eridani-speak | no | varies | shrinking the model's *output* register |
+| Spend visibility (**not** compression) | [claude-usage](https://github.com/phuryn/claude-usage) (1.7k★), ai-token-monitor | n/a | dashboard | *seeing* cost, not reducing it |
+| Task offload | houtini-lm | n/a | local LLM | delegating bounded subtasks off the paid model |
 
-Pick UltraCoS for in-process execution, data residency, and zero signup. Pick an
-edge proxy if a network hop is acceptable and you want one layer across multiple
-agents. They are not mutually exclusive.
+Two honest notes:
+1. **UltraCoS is alpha and small** next to LLMLingua or claw-compactor. It competes on being **lossless + in-process + zero-setup + cache-stacking**, not on maturity or star count.
+2. **These mostly compose.** A lossless codec, a learned compressor, and a spend dashboard solve different parts of the bill — running more than one is normal, not redundant. UltraCoS deliberately occupies the lossless-in-process slot and leaves the others to their strengths.
+
+## General vs model-specific savings
+
+Be precise about what is universal and what depends on the model:
+
+- **The character reduction is general.** ANSI-strip, JSON-minify, dedup, and
+  blank-collapse remove *characters* losslessly — that holds for any tokenizer,
+  any model, any provider.
+- **The exact token percentage is model-specific.** Tokens are not characters;
+  every model tokenizes differently. The headline figures were measured on
+  specific tokenizers: **−44.6% dialect** is in **Claude Opus** tokens
+  (`opus-dialect-validate-2026-05-31`); **−31.7% corpus** uses a tokenizer-free
+  `chars/4` proxy. Your model's real saving will differ — sometimes higher,
+  sometimes lower.
+- **Opus 4.7 / 4.8 ship their own tokenizers** (as do GPT's o200k, Gemini, etc.).
+  The bundled [`calibration/`](calibration/) snapshot fits per-model
+  `tokens-per-char` so the keep-vs-compact decision matches the *actual*
+  tokenizer rather than a fixed 4-char assumption — and it is refreshed as model
+  tokenizers move (they can change silently on a model update).
 
 ## The UltraCoS family
 
@@ -221,6 +243,47 @@ performance figures it has not measured.
 
 UltraCoS writes an append-only audit row per compaction event (savings per tool,
 shape, version) so its effect is measurable, not asserted. `ultracos-stats` reads it.
+
+## FAQ
+
+**How do I reduce Claude Code token costs?**
+Install UltraCoS (`claude plugin install ultracos`). It losslessly compacts
+tool-result output, deduplicates repeated context, and compresses the system
+prompt — stacking on top of Anthropic's prompt cache. No API key, no signup.
+
+**Is it lossless? Does it change what the agent sees?**
+The codec is lossless by meaning: `expand(compress(x)) == x` for dialect content,
+and unrecognized text passes through untouched. Truncation is the only lossy step
+and it is anchor-guarded (it reverts if it would drop a `file:line` or error
+code). The user-visible reply is never compressed.
+
+**Does it work with models other than Claude?**
+The character-level reductions (ANSI-strip, dedup, JSON-minify) are general and
+work with any model and provider. The exact token percentage is model-specific
+because each model tokenizes differently; a per-model calibration snapshot keeps
+the estimate honest. See [General vs model-specific savings](#general-vs-model-specific-savings).
+
+**How much does it actually save?**
+−31.7% on a 52-fixture tool-heavy corpus, −71.1% on large `Bash` dumps, −44.6% on
+instruction prose in the dialect (Claude Opus tokens). Your numbers depend on
+your workload and model — run `ultracos-stats` to measure your own.
+
+**How is it different from LLMLingua, claw-compactor, or a proxy like Edgee?**
+LLMLingua is a learned, *lossy* prompt compressor (it drops tokens); UltraCoS is
+lossless and in-process. claw-compactor is a lossless multi-stage pipeline;
+UltraCoS targets agent tool-results + compaction specifically and stacks on the
+cache. Edgee is a hosted edge proxy (network hop); UltraCoS runs on your machine
+with no hop. They compose — see [How it compares](#how-it-compares).
+
+**Does it send my data anywhere?**
+No. 100% local, zero network calls, zero API keys. Tool output never leaves your
+machine. Every path is fail-open: on any error the original passes through.
+
+**Can I compress my `CLAUDE.md` / skills / agent files?**
+Yes — `ultracos-core compress-config <file>` previews savings (dry-run by
+default), and `--apply` writes them behind a lossless gate with an automatic
+`.ultracos.bak` backup. The system prompt ships on every request, so this is the
+only always-on saving.
 
 ## License
 
