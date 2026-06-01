@@ -84,8 +84,8 @@ For a transparent account of the approach (without the reproducible recipe), see
 ## License
 
 **PolyForm Noncommercial License 1.0.0** — free for any noncommercial use.
-**Commercial use requires a separate paid license**; contact
-**mikko.parkkola@iki.fi**. See [LICENSE](LICENSE).
+**Commercial use requires a separate paid license**; see [COMMERCIAL.md](COMMERCIAL.md)
+or contact **mikko.parkkola@iki.fi**. See [LICENSE](LICENSE).
 
 UltraCoS is free today. If it proves its worth, the project may move to a paid
 subscription for commercial users; noncommercial use stays free.
