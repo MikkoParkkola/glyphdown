@@ -204,6 +204,37 @@ Two guards make this safe:
   `file:line`, error code, identifier, that made the output useful is automatically
   reverted. Truncation is the only lossy step, and it is anchor-guarded.
 
+## MCP server — the codec for any client, not just Claude Code
+
+The same binary speaks the Model Context Protocol over stdio, so **any MCP
+client** (Cursor, Cline, Zed, Continue, claude.ai connectors) can call the codec
+on demand — the codec is text→text and language-agnostic, so this, not a
+per-language SDK, is the portable reach surface.
+
+The plugin registers it automatically (`mcpServers` in `plugin.json`). To wire it
+into another client, point that client's MCP config at the launcher:
+
+```json
+{
+  "mcpServers": {
+    "ultracos": { "command": "sh", "args": ["<plugin>/bin/ultracos-mcp.sh"] }
+  }
+}
+```
+
+Four tools, matching the CLI:
+
+| Tool | Does |
+|---|---|
+| `ultracos_compress` | prose → ULTRACOS-L1 dense (lossless; text not in the dialect passes through untouched) |
+| `ultracos_expand` | dense → prose (exact inverse) |
+| `ultracos_compress_config` | preview-compress a config/system-prompt file; returns compressed text + token savings + a `lossless` flag (read-only, never writes) |
+| `ultracos_retrieve` | recover a rewind-stashed original by id (resolves when co-located with the store that stashed it) |
+
+Transport is newline-delimited JSON-RPC 2.0; stdout carries the protocol only,
+every diagnostic goes to stderr, and the loop is fail-open (a malformed line
+never kills the session). Run it directly with `ultracos-core mcp`.
+
 ## Architecture — and why there are Python files
 
 UltraCoS is **Rust-first, Python-fallback**:

@@ -24,6 +24,7 @@ mod extract;
 mod gate;
 mod hook;
 mod json_sample;
+mod mcp;
 mod readiness;
 mod rewind;
 mod signed_ccr;
@@ -333,6 +334,12 @@ fn main() -> Result<()> {
             println!("{}", serde_json::to_string_pretty(&report)?);
             Ok(())
         }
+        // MCP server (stdio JSON-RPC 2.0). Exposes compress/expand/compress-config/
+        // retrieve as MCP tools so ANY MCP client (Cursor, Cline, Zed, claude.ai
+        // connectors, …) gets the codec on-demand — the language-agnostic reach
+        // surface. Speaks newline-delimited JSON-RPC on stdin/stdout; all
+        // diagnostics on stderr. Run as a plugin mcpServers `command`.
+        Some("mcp") => mcp::serve(),
         Some("attest") => {
             // attest ARC_SESSION ARC_EVENT_INDEX PAYLOAD [PREFIX_HASH]
             let session = args
@@ -370,12 +377,12 @@ fn main() -> Result<()> {
         }
         Some(other) => {
             anyhow::bail!(
-                "unknown subcommand: {other}; supported: classify, summarize, compact, compact-payload, cache-sig, cache-bypass, anchor-revert, dedup, compress, expand, stats, attest, verify, version"
+                "unknown subcommand: {other}; supported: classify, summarize, compact, compact-payload, cache-sig, cache-bypass, anchor-revert, dedup, compress, expand, mcp, stats, attest, verify, version"
             );
         }
         None => {
             eprintln!(
-                "usage: ultracos-core <classify|summarize|compact|compress|expand|stats|attest|verify|version>"
+                "usage: ultracos-core <classify|summarize|compact|compress|expand|mcp|stats|attest|verify|version>"
             );
             std::process::exit(64); // sysexits: EX_USAGE
         }

@@ -16,8 +16,16 @@
     "deduplication",
     "compaction",
     "hook",
+    "mcp",
     "observability",
     "context-window",
     "claude-code"
-  ]
+  ],
+  "mcpServers": {
+    "ultracos": {
+      "command": "sh",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/bin/ultracos-mcp.sh"],
+      "env": {}
+    }
+  }
 }

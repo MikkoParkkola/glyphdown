@@ -1,8 +1,8 @@
 # ultracos-core prebuilt binaries — SHA256
-# source commit: 91be7202ef6626bf798f342276b0f982cb034cf4
+# source commit: c41cb584639b7a76913a6e2b87eb549bf20b3824
 # toolchain: rustc 1.95.0 (59807616e 2026-04-14) |  | zig 0.16.0
 # verify: shasum -a 256 -c SHA256SUMS   (run from bin/)
-d713a4cbf38d6d9c8973a499713243b8fb43e40c8d998210ef0d2fc4a6fdce07  aarch64-apple-darwin/ultracos-core
-ccb1128c1ce78a9337ab7e6a75e45fc4167cbca0fd4bdedb28aff32d27e29247  aarch64-unknown-linux-gnu/ultracos-core
-47d14d274458f3b263b56443d08d41085f7df857ea6374eca5227b5a190272b4  x86_64-apple-darwin/ultracos-core
-db3d371d820921d78468bd745baf1a27752a25762022e40618c285ca15edf769  x86_64-unknown-linux-gnu/ultracos-core
+6af7d0245a97c9a67aef0d7fbdb33321222fed09222fb14026580f6dbdc03928  aarch64-apple-darwin/ultracos-core
+73f6df6329bfb9e1788091ef39298535c1f17df114a0a5442dae093573d14ca3  aarch64-unknown-linux-gnu/ultracos-core
+180266ea0e04438238266de99c15f964600de2050cc488fd31c479ed9f2bdfb5  x86_64-apple-darwin/ultracos-core
+174d34df9841e0fa083dd1d30593c226a792a1f42cf6011e5e369282916821f3  x86_64-unknown-linux-gnu/ultracos-core
