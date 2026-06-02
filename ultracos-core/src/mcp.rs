@@ -26,7 +26,7 @@
 use serde_json::{Value, json};
 use std::io::{BufRead, Write};
 
-use crate::{codec, rewind};
+use crate::{codec, extract, rewind};
 
 /// Most recent protocol version we default to when a client omits one. We echo
 /// the client's version when present, so this only matters for non-negotiating
@@ -166,6 +166,26 @@ fn tool_specs() -> Value {
                 },
                 "required": ["session", "id"]
             }
+        },
+        {
+            "name": "ultracos_extract",
+            "description": "Shrink a large Read-class tool result: keep the head, every \
+                            structural landmark (headings, declarations, keys), and every \
+                            load-bearing anchor (file:line, error code, test verdict, hash); \
+                            collapse the uniform middle into retrieve markers; stash the full \
+                            original to the rewind store. The producer half of the \
+                            extract/retrieve loop — the returned text embeds `id`/`range` \
+                            markers that ultracos_retrieve resolves. Lossy-but-recoverable; \
+                            passes the text through unchanged when it is too small to save \
+                            tokens. Targets the fat tail (a few huge results dominate volume).",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "session": { "type": "string", "description": "Session id to stash the original under (use the same id with ultracos_retrieve)." },
+                    "text": { "type": "string", "description": "The large tool result to extract." }
+                },
+                "required": ["session", "text"]
+            }
         }
     ])
 }
@@ -236,6 +256,22 @@ fn handle_tools_call(id: Value, req: &Value) -> Value {
                 ),
             }
         }
+        "ultracos_extract" => {
+            let (Some(session), Some(text)) = (s("session"), s("text")) else {
+                return rpc_error(
+                    id,
+                    -32602,
+                    "ultracos_extract: missing required 'session' and/or 'text'",
+                );
+            };
+            match extract::extract_read(session, text) {
+                // Extracted form embeds the retrieve markers (id + range).
+                Some(r) => rpc_ok(id, tool_text(r.text)),
+                // Too small / no savings: pass the original through unchanged.
+                // Not an error — extraction simply declined.
+                None => rpc_ok(id, tool_text(text.to_string())),
+            }
+        }
         other => rpc_error(id, -32602, &format!("unknown tool: {other}")),
     }
 }
@@ -290,7 +326,7 @@ mod tests {
     }
 
     #[test]
-    fn tools_list_has_the_four_codec_tools() {
+    fn tools_list_has_the_codec_tools() {
         let r = handle(&req(r#"{"jsonrpc":"2.0","id":2,"method":"tools/list"}"#)).unwrap();
         let names: Vec<&str> = r["result"]["tools"]
             .as_array()
@@ -304,7 +340,8 @@ mod tests {
                 "ultracos_compress",
                 "ultracos_expand",
                 "ultracos_compress_config",
-                "ultracos_retrieve"
+                "ultracos_retrieve",
+                "ultracos_extract"
             ]
         );
         // Every tool carries a valid object inputSchema.
@@ -381,5 +418,65 @@ mod tests {
         });
         let r = handle(&call).unwrap();
         assert_eq!(r["error"]["code"], -32602);
+    }
+
+    #[test]
+    fn extract_then_retrieve_round_trips_the_full_original() {
+        let _g = crate::rewind::TEST_ENV_LOCK
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+        let dir = std::env::temp_dir().join("ultracos-mcp-extract-test");
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        // SAFETY: serialized by the shared TEST_ENV_LOCK above.
+        unsafe { std::env::set_var("ULTRACOS_REWIND_DIR", &dir) };
+
+        // A big doc with a uniform, droppable middle (plain prose: no colons,
+        // headings, declarations, or anchors -> collapsible).
+        let mut doc = String::from("intro paragraph orienting the reader here now\n");
+        for i in 0..60 {
+            doc.push_str(&format!("this is filler prose line number {i} of the body text\n"));
+        }
+        let call = json!({
+            "jsonrpc":"2.0","id":10,"method":"tools/call",
+            "params":{"name":"ultracos_extract","arguments":{"session":"sx","text":doc}}
+        });
+        let r = handle(&call).unwrap();
+        assert_eq!(r["result"]["isError"], false);
+        let extracted = r["result"]["content"][0]["text"].as_str().unwrap();
+        assert!(
+            extracted.contains("ultracos:extracted"),
+            "extraction must emit a retrieve marker:\n{extracted}"
+        );
+
+        // Pull the rewind id out of the marker and retrieve the FULL original.
+        let id = extracted
+            .split("id=")
+            .nth(1)
+            .and_then(|s| s.split([' ', ']']).next())
+            .expect("marker carries id=");
+        let back = json!({
+            "jsonrpc":"2.0","id":11,"method":"tools/call",
+            "params":{"name":"ultracos_retrieve","arguments":{"session":"sx","id":id}}
+        });
+        let r2 = handle(&back).unwrap();
+        assert_eq!(r2["result"]["isError"], false);
+        assert_eq!(
+            r2["result"]["content"][0]["text"], doc,
+            "retrieve must reproduce the original byte-for-byte"
+        );
+
+        unsafe { std::env::remove_var("ULTRACOS_REWIND_DIR") };
+    }
+
+    #[test]
+    fn extract_passes_small_input_through_unchanged() {
+        let call = json!({
+            "jsonrpc":"2.0","id":12,"method":"tools/call",
+            "params":{"name":"ultracos_extract","arguments":{"session":"sy","text":"tiny"}}
+        });
+        let r = handle(&call).unwrap();
+        assert_eq!(r["result"]["isError"], false);
+        assert_eq!(r["result"]["content"][0]["text"], "tiny");
     }
 }

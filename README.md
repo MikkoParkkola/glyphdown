@@ -222,14 +222,15 @@ into another client, point that client's MCP config at the launcher:
 }
 ```
 
-Four tools, matching the CLI:
+Five tools, matching the CLI:
 
 | Tool | Does |
 |---|---|
 | `ultracos_compress` | prose → ULTRACOS-L1 dense (lossless; text not in the dialect passes through untouched) |
 | `ultracos_expand` | dense → prose (exact inverse) |
 | `ultracos_compress_config` | preview-compress a config/system-prompt file; returns compressed text + token savings + a `lossless` flag (read-only, never writes) |
-| `ultracos_retrieve` | recover a rewind-stashed original by id (resolves when co-located with the store that stashed it) |
+| `ultracos_extract` | shrink a large tool result — keep head + structural landmarks + load-bearing anchors, collapse the uniform middle into retrieve markers, stash the original (the producer in the extract→retrieve loop; targets the fat tail where a few huge results dominate volume) |
+| `ultracos_retrieve` | recover a rewind-stashed original (or a line range) by id — the consumer half of `ultracos_extract` (resolves when co-located with the store that stashed it) |
 
 Transport is newline-delimited JSON-RPC 2.0; stdout carries the protocol only,
 every diagnostic goes to stderr, and the loop is fail-open (a malformed line

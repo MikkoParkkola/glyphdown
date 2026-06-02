@@ -57,9 +57,9 @@ fn full_stdio_session_frames_one_json_per_line_and_stays_clean() {
     assert_eq!(msgs[0]["id"], 1);
     assert_eq!(msgs[0]["result"]["protocolVersion"], "2025-06-18");
 
-    // tools/list exposes the four codec tools.
+    // tools/list exposes the codec tools.
     assert_eq!(msgs[1]["id"], 2);
-    assert_eq!(msgs[1]["result"]["tools"].as_array().unwrap().len(), 4);
+    assert_eq!(msgs[1]["result"]["tools"].as_array().unwrap().len(), 5);
 
     // compress returns a non-error result.
     assert_eq!(msgs[2]["id"], 3);
