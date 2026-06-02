@@ -34,6 +34,12 @@ fn patterns() -> &'static [Regex] {
             r"\bTS\d{3,5}\b",
             // Test verdicts: 12 passed, 3 failed, 1 error, 2 skipped
             r"(?i)\b\d+\s+(?:passed|failed|errored?|skipped)\b",
+            // Bare UPPERCASE per-test verdicts: pytest `test_x FAILED`, cargo
+            // `test foo ... FAILED`. Uppercase only — `passed`/`ok` in prose are
+            // too noisy, but ALL-CAPS verdicts are near-exclusive to test output,
+            // so this catches the mid-line per-test verdict the counted pattern
+            // misses (it requires a leading number) without backfiring on prose.
+            r"\b(?:PASSED|FAILED|ERRORED?|SKIPPED)\b",
             // panic / FAIL / FATAL markers (line-anchored)
             r"(?m)^(?:thread\s+'\w+'\s+panicked|FAIL(?:URE)?\b|FATAL\b|PANIC\b)",
             // exit/abort codes
@@ -142,5 +148,26 @@ mod tests {
         assert!(a.contains("error[E0432]"));
         assert!(a.contains("12 passed"));
         assert!(a.contains("3 failed"));
+    }
+
+    #[test]
+    fn extracts_bare_uppercase_test_verdicts() {
+        // pytest / cargo emit mid-line UPPERCASE per-test verdicts with no leading
+        // count — the counted pattern misses these; the uppercase pattern catches
+        // them so extract never drops the "which test failed" line.
+        let a = extract_anchors("tests/test_pay.py::test_refund FAILED");
+        assert!(a.contains("FAILED"), "pytest mid-line FAILED must anchor");
+        let b = extract_anchors("test result: ok. 12 PASSED; 0 SKIPPED");
+        assert!(b.contains("PASSED"));
+        assert!(b.contains("SKIPPED"));
+    }
+
+    #[test]
+    fn lowercase_verdict_words_in_prose_do_not_anchor() {
+        // The bias is deliberate: ALL-CAPS only. Prose like "the test passed and
+        // everything is ok" must NOT anchor, or extraction would never collapse
+        // ordinary text (the lowercase-substring backfire the project already learned).
+        let a = extract_anchors("the migration passed review and the build looks ok to me now");
+        assert!(a.is_empty(), "lowercase prose verdicts must not anchor: {a:?}");
     }
 }

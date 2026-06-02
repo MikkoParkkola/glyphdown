@@ -66,6 +66,12 @@ _ANCHOR_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"\bTS\d{3,5}\b"),
     # Test verdicts:  `12 passed`, `3 failed`, `1 error`, `2 skipped`
     re.compile(r"\b\d+\s+(?:passed|failed|errored?|skipped)\b", re.IGNORECASE),
+    # Bare UPPERCASE per-test verdicts:  pytest `test_x FAILED`, cargo
+    # `test foo ... FAILED`. Uppercase only — `passed`/`ok` in prose are too
+    # noisy, but ALL-CAPS verdicts are near-exclusive to test output, so this
+    # catches the mid-line per-test verdict the counted pattern misses (it
+    # requires a leading number) without backfiring on prose.
+    re.compile(r"\b(?:PASSED|FAILED|ERRORED?|SKIPPED)\b"),
     # panic / FAIL / FATAL markers (line-anchored; FAIL inside random prose
     # is too noisy to count as an anchor).
     re.compile(r"^(?:thread\s+'\w+'\s+panicked|FAIL(?:URE)?\b|FATAL\b|PANIC\b)",
