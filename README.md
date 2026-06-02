@@ -26,7 +26,7 @@ needs a paid license — see [COMMERCIAL.md](COMMERCIAL.md).
 | Instruction prose in the ULTRACOS-L1 dialect | **−44.6%** | every cached system-prompt call (Claude Opus tokens) |
 | Network calls · API keys · data leaving your machine | **0** | 100% local, fail-open |
 
-<sub>Char reduction is general; exact token % is **model-specific** — see [General vs model-specific savings](#general-vs-model-specific-savings). Numbers are reproducible from [`bench/`](./bench/) (`codec_bench.py`), not asserted; the project does not publish figures it has not measured.</sub>
+<sub>Char reduction is general; exact token % is **model-specific** — see [General vs model-specific savings](#general-vs-model-specific-savings). Figures are measured, not asserted; the codec is fully open ([`ultracos-core/`](ultracos-core/)) so the lossless behavior is verifiable, and the project does not publish numbers it has not measured.</sub>
 
 ## How it works
 
@@ -284,11 +284,13 @@ shape, version) so its effect is measurable, not asserted. `ultracos-stats` read
 
 ## Quality proof — losslessness is a gate, not a claim
 
-`python3 bench/quality_proof.py` (no API key, runs in under a second) asserts
-`expand(compress(x)) == x` for **all 58 compiled-in dialect pairs** and exits
-non-zero if any regress — a CI/release gate so a dialect change can never silently
-break the round-trip. It also prints the measured exact-match rate over the corpus.
-`--live` adds an optional QA-accuracy probe (vanilla vs compressed) for release notes.
+`expand(compress(x)) == x` is a hard invariant in the **shipped, open** codec:
+`Dialect::is_lossless()` in [`ultracos-core/src/codec.rs`](ultracos-core/src/codec.rs)
+self-checks every dialect on load and falls back to the bundled default on any
+collision, and the Rust unit tests assert the round-trip for all compiled-in dialect
+pairs. A release gate runs that same proof before every publish, so a dialect change
+can never silently break the round-trip. The codec source is fully open — verify it
+yourself with `ultracos-core compress | ultracos-core expand`.
 
 ## FAQ
 
