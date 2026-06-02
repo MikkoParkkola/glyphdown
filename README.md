@@ -282,6 +282,14 @@ performance figures it has not measured.
 UltraCoS writes an append-only audit row per compaction event (savings per tool,
 shape, version) so its effect is measurable, not asserted. `ultracos-stats` reads it.
 
+## Quality proof — losslessness is a gate, not a claim
+
+`python3 bench/quality_proof.py` (no API key, runs in under a second) asserts
+`expand(compress(x)) == x` for **all 58 compiled-in dialect pairs** and exits
+non-zero if any regress — a CI/release gate so a dialect change can never silently
+break the round-trip. It also prints the measured exact-match rate over the corpus.
+`--live` adds an optional QA-accuracy probe (vanilla vs compressed) for release notes.
+
 ## FAQ
 
 **How do I reduce Claude Code token costs?**
