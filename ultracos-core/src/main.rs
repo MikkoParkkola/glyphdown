@@ -23,6 +23,7 @@ mod dedup;
 mod extract;
 mod gate;
 mod hook;
+mod json_sample;
 mod readiness;
 mod rewind;
 mod signed_ccr;
@@ -182,6 +183,30 @@ fn main() -> Result<()> {
         // and report extraction/retrieval/gate stats + a data-gated readiness verdict.
         Some("feature-readiness") => {
             println!("{}", readiness::from_data_dir().render());
+            Ok(())
+        }
+        // F3 (internal-ref): uniform JSON-array sampling, Rewind-backed. stdin = JSON.
+        // Opt-in (ULTRACOS_JSON_SAMPLE); declines non-uniform arrays (no backfire);
+        // pass-through if disabled / not JSON / no savings.
+        Some("sample-json") => {
+            use std::io::Read;
+            let session = args.get(1).map(|s| s.as_str()).unwrap_or("default");
+            let mut buf = String::new();
+            std::io::stdin().read_to_string(&mut buf)?;
+            match json_sample::sample_json(session, &buf) {
+                Some(s) => {
+                    print!("{}", s.text);
+                    eprintln!(
+                        "ultracos: sampled {}-item array {} -> {} tokens ({} anomalies kept, id={})",
+                        s.array_len,
+                        s.original_tokens,
+                        s.sampled_tokens,
+                        s.anomalies_kept,
+                        s.rewind_id
+                    );
+                }
+                None => print!("{buf}"),
+            }
             Ok(())
         }
         // F1 (internal-ref): read section-extraction. stdin = a Read tool result.
