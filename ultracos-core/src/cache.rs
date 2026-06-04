@@ -1,9 +1,9 @@
-//! cache — SIL-5 cache-hot bypass (internal-ref), Rust port of ultracos_cache.py.
+//! cache — cache-hot compression bypass, Rust port of ultracos_cache.py.
 //!
 //! Backs off compression on cache-hot prefixes so the Anthropic native prompt
 //! cache key stays stable — compressing a payload whose long stable prefix is
 //! already cached upstream mutates the cache key and forces a fresh fetch
-//! (the A7 internal cache-drain class). Heuristic: a prefix observed >= hot_hits
+//! (a known cache-drain failure mode). Heuristic: a prefix observed >= hot_hits
 //! times within TTL is treated as cache-hot and bypasses compaction.
 //!
 //! Default OFF (`ULTRACOS_CACHE_AWARE`), so in the flipped-default rust path
