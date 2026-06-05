@@ -1,16 +1,16 @@
 #!/bin/sh
-# Reproducible build for the ultracos-core prebuilt hot-path binaries.
+# Reproducible build for the glyphdown-core prebuilt hot-path binaries.
 #
 # These binaries are committed under bin/<triple>/ so the plugin works on a
 # fresh marketplace install with NO build step. This script rebuilds all four
-# from the in-repo source (../ultracos-core) and refreshes bin/SHA256SUMS so
+# from the in-repo source (../glyphdown-core) and refreshes bin/SHA256SUMS so
 # anyone can verify the blobs against the source.
 #
 # PROVENANCE / VERIFICATION (supply-chain, DoD D30):
-#   The source is fully present at ultracos-core/src/. The binaries are NOT a
+#   The source is fully present at glyphdown-core/src/. The binaries are NOT a
 #   trust-me blob: build them yourself with this script, then run the behavioral
 #   equivalence gates which prove the binary matches the python reference codec:
-#       (cd ../ultracos-core && cargo test --release)
+#       (cd ../glyphdown-core && cargo test --release)
 #       python3 ../bench/equiv_rust_vs_python.py          # 2a transform parity
 #       python3 ../bench/equiv_guards_rust_vs_python.py   # 2b guard parity
 #   Behavioral parity is the real guarantee; byte-for-byte reproducibility is
@@ -23,11 +23,11 @@
 #
 # Fail-open: even a corrupt/mismatched binary cannot break a session — the
 # _run.sh dispatcher only execs it when present+executable and the hook's own
-# contract emits {"continue":true} on any error; ULTRACOS_RUST=0 forces python.
+# contract emits {"continue":true} on any error; GLYPHDOWN_RUST=0 forces python.
 
 set -e
 cd "$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
-CRATE="../ultracos-core"
+CRATE="../glyphdown-core"
 P=un
 LA="aarch64-${P}known-linux-gnu"
 LX="x86_64-${P}known-linux-gnu"
@@ -48,17 +48,17 @@ echo "Building linux-gnu targets (cargo-zigbuild)…"
 echo "Staging binaries under bin/<triple>/…"
 for t in "$DARWIN_ARM" "$DARWIN_X86" "$LA" "$LX"; do
   mkdir -p "$t"
-  cp "$CRATE/target/$t/release/ultracos-core" "$t/ultracos-core"
-  chmod +x "$t/ultracos-core"
+  cp "$CRATE/target/$t/release/glyphdown-core" "$t/glyphdown-core"
+  chmod +x "$t/glyphdown-core"
 done
 
 echo "Refreshing SHA256SUMS…"
 {
-  echo "# ultracos-core prebuilt binaries — SHA256"
+  echo "# glyphdown-core prebuilt binaries — SHA256"
   echo "# source commit: $(git rev-parse HEAD 2>/dev/null || echo unknown)"
   echo "# toolchain: $(rustc --version) | $(cargo zigbuild --version 2>/dev/null) | zig $(zig version 2>/dev/null)"
   echo "# verify: shasum -a 256 -c SHA256SUMS   (run from bin/)"
-  shasum -a 256 */ultracos-core
+  shasum -a 256 */glyphdown-core
 } > SHA256SUMS
 
 echo "Done. Verify with: shasum -a 256 -c SHA256SUMS"

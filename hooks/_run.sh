@@ -1,18 +1,18 @@
 #!/bin/sh
-# UltraCoS hook runtime dispatcher.
+# Glyphdown hook runtime dispatcher.
 #
 # Two invocation forms:
 #   1. python-only hook (7 of 8 hooks):
 #        sh _run.sh <script.py> [args…]
 #   2. rust-capable hook (PostToolUse codec):
 #        sh _run.sh --rust <subcmd> <script.py> [args…]
-#      where <subcmd> is the ultracos-core subcommand (e.g. posttooluse).
+#      where <subcmd> is the glyphdown-core subcommand (e.g. posttooluse).
 #
 # Runtime selection order:
-#   A. RUST FAST PATH (DEFAULT, opt out with ULTRACOS_RUST=0): a prebuilt
-#      `ultracos-core` (~5ms vs ~170ms python).
-#        - $ULTRACOS_BIN explicit override wins, else resolve
-#          bin/<target-triple>/ultracos-core by `uname -s`/`uname -m`.
+#   A. RUST FAST PATH (DEFAULT, opt out with GLYPHDOWN_RUST=0): a prebuilt
+#      `glyphdown-core` (~5ms vs ~170ms python).
+#        - $GLYPHDOWN_BIN explicit override wins, else resolve
+#          bin/<target-triple>/glyphdown-core by `uname -s`/`uname -m`.
 #        - exec the binary with <subcmd>; stdin/stdout pass through.
 #        - The rust codec is proven equivalent to python on the bench corpus
 #          (equiv_rust_vs_python.py 100%), the SIL-5 cache-bypass + internal-ref
@@ -24,9 +24,9 @@
 #          learned skip-policy + min-payload/allowlist gates (these SKIP
 #          compaction -> rust just compacts more), A/B no-tag experiment (~10%
 #          cohort; rust ships the with-tag control), and the codec audit.jsonl
-#          rows (telemetry; ultracos-stats reads the separate arc-event ledger).
-#          Set ULTRACOS_RUST=0 for the full-featured python path.
-#   B. $ULTRACOS_PYTHON — explicit fast-interpreter override (bypass slow pyenv
+#          rows (telemetry; glyphdown-stats reads the separate arc-event ledger).
+#          Set GLYPHDOWN_RUST=0 for the full-featured python path.
+#   B. $GLYPHDOWN_PYTHON — explicit fast-interpreter override (bypass slow pyenv
 #      SHIMS; ~6x faster than a re-resolving shim).
 #   C. python3 on PATH.
 #
@@ -45,9 +45,9 @@ script="$1"
 [ -n "$script" ] || { echo '{"continue":true}'; exit 0; }
 shift
 
-# ── A. Rust fast path (default ON; opt out with ULTRACOS_RUST=0) ─────────────
-if [ -n "$rust_subcmd" ] && [ "$ULTRACOS_RUST" != "0" ]; then
-  bin="$ULTRACOS_BIN"
+# ── A. Rust fast path (default ON; opt out with GLYPHDOWN_RUST=0) ─────────────
+if [ -n "$rust_subcmd" ] && [ "$GLYPHDOWN_RUST" != "0" ]; then
+  bin="$GLYPHDOWN_BIN"
   if [ -z "$bin" ]; then
     # Resolve the prebuilt binary by platform triple.
     root="${CLAUDE_PLUGIN_ROOT:-$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)}"
@@ -67,7 +67,7 @@ if [ -n "$rust_subcmd" ] && [ "$ULTRACOS_RUST" != "0" ]; then
         esac ;;
     esac
     if [ -n "$triple" ]; then
-      cand="$root/bin/$triple/ultracos-core"
+      cand="$root/bin/$triple/glyphdown-core"
       [ -x "$cand" ] && bin="$cand"
     fi
   fi
@@ -78,8 +78,8 @@ if [ -n "$rust_subcmd" ] && [ "$ULTRACOS_RUST" != "0" ]; then
 fi
 
 # ── B/C. Python path ────────────────────────────────────────────────────────
-if [ -n "$ULTRACOS_PYTHON" ] && [ -x "$ULTRACOS_PYTHON" ]; then
-  exec "$ULTRACOS_PYTHON" "$script" "$@"
+if [ -n "$GLYPHDOWN_PYTHON" ] && [ -x "$GLYPHDOWN_PYTHON" ]; then
+  exec "$GLYPHDOWN_PYTHON" "$script" "$@"
 fi
 
 exec python3 "$script" "$@"

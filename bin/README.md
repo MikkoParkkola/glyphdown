@@ -1,6 +1,6 @@
-# `bin/` — prebuilt `ultracos-core` hot-path binaries
+# `bin/` — prebuilt `glyphdown-core` hot-path binaries
 
-These four binaries let the ultracos PostToolUse codec run natively (~5 ms)
+These four binaries let the glyphdown PostToolUse codec run natively (~5 ms)
 instead of via the python interpreter (~170 ms) on a fresh marketplace install,
 with **no build step required** of the user.
 
@@ -13,7 +13,7 @@ with **no build step required** of the user.
 
 ## Provenance (these are NOT opaque blobs)
 
-The full source is in [`../ultracos-core/src/`](../ultracos-core/src). The
+The full source is in [`../glyphdown-core/src/`](../glyphdown-core/src). The
 binaries are reproducible from it and their behavior is verified against the
 python reference codec on every push.
 
@@ -24,11 +24,11 @@ python reference codec on every push.
   reproducibility is best-effort because rust release builds may embed toolchain
   paths even with `strip=true`):
   ```sh
-  (cd ultracos-core && cargo test --release)
+  (cd glyphdown-core && cargo test --release)
   python3 bench/equiv_rust_vs_python.py          # 2a transform parity: 52/52 = 100%
   python3 bench/equiv_guards_rust_vs_python.py   # 2b guard parity: signature 40/40, anchor 55/55, cache interop PASS
   ```
-  CI (`.github/workflows/ultracos-tests.yml` → `rust-parity` job) runs exactly
+  CI (`.github/workflows/glyphdown-tests.yml` → `rust-parity` job) runs exactly
   these on every push, so the binaries can never drift from the source behavior.
 
 Toolchain for the committed binaries is recorded in the `SHA256SUMS` header
@@ -39,5 +39,5 @@ Toolchain for the committed binaries is recorded in the `SHA256SUMS` header
 The dispatcher ([`../hooks/_run.sh`](../hooks/_run.sh)) only execs a binary that
 is present and executable, and the hook's own contract emits `{"continue":true}`
 on any error — a missing, corrupt, or mismatched binary cannot break a session,
-it simply falls back to the python codec. Set `ULTRACOS_RUST=0` to force python
+it simply falls back to the python codec. Set `GLYPHDOWN_RUST=0` to force python
 unconditionally.

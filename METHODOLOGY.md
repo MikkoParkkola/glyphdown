@@ -1,4 +1,4 @@
-# How UltraCoS calibration works
+# How Glyphdown calibration works
 
 This document is deliberately transparent about the **approach**, so you can
 trust the published result and judge it. It does not contain the data, the

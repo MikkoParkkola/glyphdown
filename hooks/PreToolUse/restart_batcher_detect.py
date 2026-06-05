@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ultracos PreToolUse restart-batcher detect (internal-ref).
+"""glyphdown PreToolUse restart-batcher detect (internal-ref).
 
 Detects tool invocations that imply a Claude Code session restart is
 needed for the change to take effect, and enqueues a row in the

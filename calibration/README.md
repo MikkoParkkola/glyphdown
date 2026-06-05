@@ -11,7 +11,7 @@ is and is not published.
 
 ```jsonc
 {
-  "schema": "ultracos-calib-v1",
+  "schema": "glyphdown-calib-v1",
   "snapshot_version": "YYYY.MM.DD",
   "models": {
     "<model-id>": {

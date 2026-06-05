@@ -1,6 +1,10 @@
 # Changelog
 
-All notable changes to UltraCoS. Format: [Keep a Changelog]. Versioning: [SemVer].
+All notable changes to Glyphdown (formerly UltraCoS). Format: [Keep a Changelog]. Versioning: [SemVer].
+
+> **Note:** the product was renamed from **UltraCoS** to **Glyphdown**. Historical
+> release entries below intentionally retain the original `UltraCoS` / `ULTRACOS_*`
+> names as they were shipped — they are a factual record and are not rewritten.
 
 ## [0.5.0]
 

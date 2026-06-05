@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""ultracos SessionStart restart-batcher auto-clear (internal-ref).
+"""glyphdown SessionStart restart-batcher auto-clear (internal-ref).
 
 A fresh process restart proves the queued config changes are now in
 effect, so the pending-restart queue can be cleared automatically.

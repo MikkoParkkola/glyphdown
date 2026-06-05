@@ -1,6 +1,6 @@
-# UltraCoS — token-cost reduction for Claude Code
+# Glyphdown — token-cost reduction for Claude Code
 
-UltraCoS is a Claude Code plugin that lowers token cost across a session without
+Glyphdown is a Claude Code plugin that lowers token cost across a session without
 changing what the agent can see. It compacts tool-result output, removes repeated
 content, and steers compaction toward a dense form — all **lossless by meaning**,
 **fail-open** (any error passes the original through untouched), and fast (a
@@ -16,21 +16,21 @@ needs a paid license — see [COMMERCIAL.md](COMMERCIAL.md).
 ---
 
 > **Your agent's tool output is mostly noise** — ANSI codes, repeated reads,
-> machine chatter, verbose compaction summaries. UltraCoS strips it **losslessly,
+> machine chatter, verbose compaction summaries. Glyphdown strips it **losslessly,
 > on-device, before it bills** — and stacks *on top of* Anthropic's prompt cache.
 
 | Measured | Reduction | On |
 |---|---:|---|
 | Tool-heavy session corpus (52 real fixtures) | **−31.7%** | total tokens 85,405 → 58,347 (`chars/4` proxy) |
 | Large `Bash` dumps | **−71.1%** | the noisiest payloads |
-| Instruction prose in the ULTRACOS-L1 dialect | **−44.6%** | every cached system-prompt call (Claude Opus tokens) |
+| Instruction prose in the GLYPHDOWN-L1 dialect | **−44.6%** | every cached system-prompt call (Claude Opus tokens) |
 | Network calls · API keys · data leaving your machine | **0** | 100% local, fail-open |
 
-<sub>Char reduction is general; exact token % is **model-specific** — see [General vs model-specific savings](#general-vs-model-specific-savings). Figures are measured, not asserted; the codec is fully open ([`ultracos-core/`](ultracos-core/)) so the lossless behavior is verifiable, and the project does not publish numbers it has not measured.</sub>
+<sub>Char reduction is general; exact token % is **model-specific** — see [General vs model-specific savings](#general-vs-model-specific-savings). Figures are measured, not asserted; the codec is fully open ([`glyphdown-core/`](glyphdown-core/)) so the lossless behavior is verifiable, and the project does not publish numbers it has not measured.</sub>
 
 ## How it works
 
-UltraCoS hooks the request lifecycle at six points; every one fails open
+Glyphdown hooks the request lifecycle at six points; every one fails open
 (`{"continue": true}` on any error — it can never block your input):
 
 ```mermaid
@@ -46,7 +46,7 @@ flowchart LR
 ```
 
 It does **not** fight Anthropic's cache — it works on a different token bucket.
-Native caching discounts what is *already cached*; UltraCoS shrinks the
+Native caching discounts what is *already cached*; Glyphdown shrinks the
 turn-to-turn traffic that changes every call and therefore *never* caches, plus
 the dense form of what *does* get cached. The two stack:
 
@@ -57,8 +57,8 @@ flowchart TB
     T[Turn-to-turn traffic<br/>tool results, history, compaction]
   end
   P -->|Anthropic cache: up to −90%| C[cheap]
-  P -->|UltraCoS dialect: −44.6% of what caches| C
-  T -->|UltraCoS codec: −31.7% corpus| S[shrunk every call]
+  P -->|Glyphdown dialect: −44.6% of what caches| C
+  T -->|Glyphdown codec: −31.7% corpus| S[shrunk every call]
   C --> L([Lower total])
   S --> L
 ```
@@ -69,14 +69,14 @@ The hot path is a prebuilt native binary; Python is the portable fallback:
 flowchart LR
   H[PostToolUse hook] --> Qb{native binary<br/>available?}
   Qb -- yes --> Rb[Rust codec ~5 ms]
-  Qb -- "no / ULTRACOS_RUST=0" --> Py[Python codec ~170 ms]
+  Qb -- "no / GLYPHDOWN_RUST=0" --> Py[Python codec ~170 ms]
   Rb --> O([compacted output<br/>identical, fail-open])
   Py --> O
 ```
 
-## ULTRACOS-L1 — the symbolic dialect at the core
+## GLYPHDOWN-L1 — the symbolic dialect at the core
 
-UltraCoS is named for its **CoS** — the *symbolic notation* it started as. ULTRACOS-L1
+Glyphdown is named for its **CoS** — the *symbolic notation* it started as. GLYPHDOWN-L1
 is a **lossless prose↔dense transcoder**: it rewrites verbose, repetitive
 instruction-style prose (system prompts, `CLAUDE.md`, skill and agent files) into a
 compact symbolic dialect the **same model decodes natively**, then expands it back
@@ -96,53 +96,53 @@ project began**. Every other mechanism (tool-result codec, dedup, the state-awar
 gate) stacks on top of it.
 
 **Model-specific dialects.** Tokenizers differ per model, so the dialect is a *data
-file* the binary loads at runtime (`ULTRACOS_DIALECT`) — tune or ship a dialect for
-your model with **no rebuild** (lossless self-check on load). `ultracos-core
-dialect-export` dumps the default to edit; `ultracos-core compress` / `expand` run it
+file* the binary loads at runtime (`GLYPHDOWN_DIALECT`) — tune or ship a dialect for
+your model with **no rebuild** (lossless self-check on load). `glyphdown-core
+dialect-export` dumps the default to edit; `glyphdown-core compress` / `expand` run it
 directly; `compress-config` applies it to your config files (dry-run + backup + lossless gate).
 
 ## Quickstart — first 5 minutes
 
 ```sh
-claude plugin marketplace add MikkoParkkola/ultracos
-claude plugin install ultracos
+claude plugin marketplace add MikkoParkkola/glyphdown
+claude plugin install glyphdown
 ```
 
 1. **Restart your session.** Hooks fire automatically — nothing to configure.
 2. **Use Claude normally** for a few tool-heavy turns (reads, greps, bash).
-3. **Check what it saved:** run `ultracos-stats` — it reads the append-only audit
+3. **Check what it saved:** run `glyphdown-stats` — it reads the append-only audit
    log and prints per-tool savings (so the effect is measured, not asserted).
-4. **Tune aggressiveness** with `ultracos-set-level` if you want more or less.
-5. **Verify losslessness yourself:** `echo "<dense prose>" | ultracos-core compress | ultracos-core expand` round-trips byte-for-byte.
+4. **Tune aggressiveness** with `glyphdown-set-level` if you want more or less.
+5. **Verify losslessness yourself:** `echo "<dense prose>" | glyphdown-core compress | glyphdown-core expand` round-trips byte-for-byte.
 
 Nothing leaves your machine; if anything errors, the original output passes
-through untouched. To pause, set `ULTRACOS_DISABLE=1`.
+through untouched. To pause, set `GLYPHDOWN_DISABLE=1`.
 
 ## How it compares
 
-Token reduction is a crowded, genuinely diverse space. UltraCoS is a **lossless,
+Token reduction is a crowded, genuinely diverse space. Glyphdown is a **lossless,
 in-process, agent-tool-result** compressor that stacks on native caching — it is
 not trying to be a learned compressor or a hosted proxy. The honest landscape
 (★ = GitHub stars, a maturity signal, not a quality verdict):
 
 | Approach | Examples | Reversible? | Where it runs | Best at |
 |---|---|---|---|---|
-| **Lossless in-process codec** (this) | **UltraCoS** | yes (by meaning) | your machine, no hop | agent tool-results + dense compaction, stacked on cache |
+| **Lossless in-process codec** (this) | **Glyphdown** | yes (by meaning) | your machine, no hop | agent tool-results + dense compaction, stacked on cache |
 | Lossless reversible pipeline | [claw-compactor](https://github.com/open-compress/claw-compactor) (2.2k★) | yes | varies | multi-stage general-text compression |
 | Drop-in prompt compression | [leanctx](https://github.com/jia-gao/leanctx) (300★+) | varies | library | production-app prompt text |
 | Learned / lossy compression | [LLMLingua / LLMLingua-2](https://github.com/microsoft/LLMLingua) (6k★) | no (drops tokens) | local model | aggressive prompt-text reduction where some loss is acceptable |
-| Tool-call interceptor | [Crucible](https://github.com/Tetrahedroned/Crucible) | varies | in-process | nearest architecture to UltraCoS |
+| Tool-call interceptor | [Crucible](https://github.com/Tetrahedroned/Crucible) | varies | in-process | nearest architecture to Glyphdown |
 | Hosted edge proxy | Edgee, `rtk`-based | partial | network hop | one layer across multiple agents / clients |
 | Output brevity ("caveman") | caveman, eridani-speak | no | varies | shrinking the model's *output* register |
 | Spend visibility (**not** compression) | [claude-usage](https://github.com/phuryn/claude-usage) (1.7k★), ai-token-monitor | n/a | dashboard | *seeing* cost, not reducing it |
 | Task offload | houtini-lm | n/a | local LLM | delegating bounded subtasks off the paid model |
 
 Two honest notes:
-1. **UltraCoS is small by star count** next to LLMLingua or claw-compactor — but it
+1. **Glyphdown is small by star count** next to LLMLingua or claw-compactor — but it
    is **dogfooded in production daily on real Claude Code traffic**, not a research
    demo. Recently open-sourced, long battle-tested. It competes on being **lossless
    + in-process + zero-setup + cache-stacking**.
-2. **These mostly compose.** A lossless codec, a learned compressor, and a spend dashboard solve different parts of the bill — running more than one is normal, not redundant. UltraCoS deliberately occupies the lossless-in-process slot and leaves the others to their strengths.
+2. **These mostly compose.** A lossless codec, a learned compressor, and a spend dashboard solve different parts of the bill — running more than one is normal, not redundant. Glyphdown deliberately occupies the lossless-in-process slot and leaves the others to their strengths.
 
 ## General vs model-specific savings
 
@@ -163,13 +163,13 @@ Be precise about what is universal and what depends on the model:
   tokenizer rather than a fixed 4-char assumption — and it is refreshed as model
   tokenizers move (they can change silently on a model update).
 
-## The UltraCoS family
+## The Glyphdown family
 
-UltraCoS is a token-cost-reduction system for LLM coding agents. The pieces have
+Glyphdown is a token-cost-reduction system for LLM coding agents. The pieces have
 distinct roles:
 
-- **UltraCoS Plugin** (this repo) — the free, client-side codec for Claude Code.
-- **UltraCoS Verify** (`ultracos-verify`) — an MIT tool so savings can be verified
+- **Glyphdown Plugin** (this repo) — the free, client-side codec for Claude Code.
+- **Glyphdown Verify** (`glyphdown-verify`) — an MIT tool so savings can be verified
   independently, without trusting the provider.
 - A managed offering — spend visibility and prompt-cache protection for teams
   running Claude Code at scale — is available on inquiry (see [COMMERCIAL.md](COMMERCIAL.md)).
@@ -179,20 +179,20 @@ The plugin is free and complete on its own; the rest is optional.
 ## Install
 
 See [Quickstart](#quickstart--first-5-minutes) above — two commands, then restart
-your session. `ultracos-stats` shows savings; `ultracos-set-level` tunes aggressiveness.
+your session. `glyphdown-stats` shows savings; `glyphdown-set-level` tunes aggressiveness.
 
 ## What it does (the wired features)
 
-UltraCoS registers six hook points; every one fails open.
+Glyphdown registers six hook points; every one fails open.
 
 | Hook | What it does |
 |---|---|
 | **PostToolUse — codec** | Compacts each tool result: ANSI strip, JSON minify, blank-collapse, shape-aware compaction (JSON / YAML / TOML / code / filesystem path-lists), oversize truncation, schema-tag. Runs as the native binary, Python fallback. |
 | **PostToolUse — session dedup** | A repeated `Read`/`Grep`/`Glob`/`Monitor` result is replaced with a short reference to its earlier occurrence in the session. |
 | **PreToolUse — history dedup** | Collapses duplicate context already carried in earlier turns before a tool runs. |
-| **PreCompact — summary-form mandate** | When Claude Code compacts, UltraCoS injects an instruction to summarize in a dense, structured form. |
-| **UserPromptSubmit — mode detector + stats** | Detects the active aggressiveness level and serves the `ultracos-stats` view. |
-| **SessionStart — skill loader** | Loads the UltraCoS mode skill so the agent understands the dense conventions. |
+| **PreCompact — summary-form mandate** | When Claude Code compacts, Glyphdown injects an instruction to summarize in a dense, structured form. |
+| **UserPromptSubmit — mode detector + stats** | Detects the active aggressiveness level and serves the `glyphdown-stats` view. |
+| **SessionStart — skill loader** | Loads the Glyphdown mode skill so the agent understands the dense conventions. |
 
 ### Safety: it can reduce tokens but never corrupt context
 
@@ -217,7 +217,7 @@ into another client, point that client's MCP config at the launcher:
 ```json
 {
   "mcpServers": {
-    "ultracos": { "command": "sh", "args": ["<plugin>/bin/ultracos-mcp.sh"] }
+    "glyphdown": { "command": "sh", "args": ["<plugin>/bin/glyphdown-mcp.sh"] }
   }
 }
 ```
@@ -226,27 +226,27 @@ Five tools, matching the CLI:
 
 | Tool | Does |
 |---|---|
-| `ultracos_compress` | prose → ULTRACOS-L1 dense (lossless; text not in the dialect passes through untouched) |
-| `ultracos_expand` | dense → prose (exact inverse) |
-| `ultracos_compress_config` | preview-compress a config/system-prompt file; returns compressed text + token savings + a `lossless` flag (read-only, never writes) |
-| `ultracos_extract` | shrink a large tool result — keep head + structural landmarks + load-bearing anchors, collapse the uniform middle into retrieve markers, stash the original (the producer in the extract→retrieve loop; targets the fat tail where a few huge results dominate volume) |
-| `ultracos_retrieve` | recover a rewind-stashed original (or a line range) by id — the consumer half of `ultracos_extract` (resolves when co-located with the store that stashed it) |
+| `glyphdown_compress` | prose → GLYPHDOWN-L1 dense (lossless; text not in the dialect passes through untouched) |
+| `glyphdown_expand` | dense → prose (exact inverse) |
+| `glyphdown_compress_config` | preview-compress a config/system-prompt file; returns compressed text + token savings + a `lossless` flag (read-only, never writes) |
+| `glyphdown_extract` | shrink a large tool result — keep head + structural landmarks + load-bearing anchors, collapse the uniform middle into retrieve markers, stash the original (the producer in the extract→retrieve loop; targets the fat tail where a few huge results dominate volume) |
+| `glyphdown_retrieve` | recover a rewind-stashed original (or a line range) by id — the consumer half of `glyphdown_extract` (resolves when co-located with the store that stashed it) |
 
 Transport is newline-delimited JSON-RPC 2.0; stdout carries the protocol only,
 every diagnostic goes to stderr, and the loop is fail-open (a malformed line
-never kills the session). Run it directly with `ultracos-core mcp`.
+never kills the session). Run it directly with `glyphdown-core mcp`.
 
 ## Architecture — and why there are Python files
 
-UltraCoS is **Rust-first, Python-fallback**:
+Glyphdown is **Rust-first, Python-fallback**:
 
 - The hot-path codec ships as **prebuilt native binaries** under
   [`bin/<triple>/`](bin/) (macOS and Linux, arm64 and x86_64). The PostToolUse hook
   runs the binary by default — roughly `5 ms` per call versus `~170 ms` to launch a
   Python interpreter, with identical output.
 - The **Python codec is the portable fallback** — used on an unsupported platform,
-  a missing binary, an `exec` denied by policy, or `ULTRACOS_RUST=0`. So
-  `hooks/PostToolUse/ultracos_codec.py` and the modules it imports (cache, dedup,
+  a missing binary, an `exec` denied by policy, or `GLYPHDOWN_RUST=0`. So
+  `hooks/PostToolUse/glyphdown_codec.py` and the modules it imports (cache, dedup,
   anchor-guard, tokenizer, paths) exist so the plugin still works where the binary
   cannot run. Every path is fail-open.
 - The **lightweight glue hooks** (skill loader, mode detector, stats handler,
@@ -255,13 +255,13 @@ UltraCoS is **Rust-first, Python-fallback**:
 
 Binaries are reproducible from the in-repo source via [`bin/build.sh`](bin/build.sh)
 and verified by [`bin/SHA256SUMS`](bin/SHA256SUMS). The codec source is fully open —
-[`ultracos-core/`](ultracos-core/) — read every line.
+[`glyphdown-core/`](glyphdown-core/) — read every line.
 
 ## Cache safety — why it can't bust your prompt cache
 
 Anthropic's prompt cache is the biggest token-cost lever there is, and mutating an
 already-cached prefix forces a full re-fetch at creation price — the worst failure
-mode in this space. **UltraCoS is cache-safe by construction, not by a flag:**
+mode in this space. **Glyphdown is cache-safe by construction, not by a flag:**
 
 - The codec acts only on **fresh tool-result output** (the appended tail), never on
   the system-prompt / tool-definition prefix that gets cached.
@@ -272,7 +272,7 @@ mode in this space. **UltraCoS is cache-safe by construction, not by a flag:**
 - **History-dedup only appends an advisory note**; it does not rewrite prior turns.
 - The user-visible reply is never compressed.
 
-`ULTRACOS_CACHE_AWARE` (below) is optional defense-in-depth — a heuristic that backs
+`GLYPHDOWN_CACHE_AWARE` (below) is optional defense-in-depth — a heuristic that backs
 off on prefixes it *infers* are cache-hot. It is **off by default because the
 structural guarantees above already protect the cache**, and the heuristic cannot
 see Anthropic's real cache state (it awaits `usage.cache_read_input_tokens`). Turn it
@@ -282,14 +282,14 @@ on for belt-and-suspenders; you do not need it for correctness.
 
 | Env var | Default | Effect |
 |---|---|---|
-| `ULTRACOS_RUST` | on | Set `0` to force the Python codec. |
-| `ULTRACOS_ANCHOR_GUARD` | on | Set `0`/`off` to disable the anchor-survival revert (not recommended). |
-| `ULTRACOS_CACHE_AWARE` | off | Optional defense-in-depth: backs off compaction on inferred cache-hot prefixes. Off because the codec is already cache-safe by construction (see [Cache safety](#cache-safety--why-it-cant-bust-your-prompt-cache)); on adds per-call disk I/O. |
-| `ULTRACOS_DATA_DIR` | `~/.ultracos` | Where the audit log and state live. |
+| `GLYPHDOWN_RUST` | on | Set `0` to force the Python codec. |
+| `GLYPHDOWN_ANCHOR_GUARD` | on | Set `0`/`off` to disable the anchor-survival revert (not recommended). |
+| `GLYPHDOWN_CACHE_AWARE` | off | Optional defense-in-depth: backs off compaction on inferred cache-hot prefixes. Off because the codec is already cache-safe by construction (see [Cache safety](#cache-safety--why-it-cant-bust-your-prompt-cache)); on adds per-call disk I/O. |
+| `GLYPHDOWN_DATA_DIR` | `~/.ultracos` | Where the audit log and state live. The default keeps the legacy `~/.ultracos` name across the brand rename so existing audit/cache state is not orphaned. |
 
 ## Calibration — a published snapshot, kept current as a service
 
-The codec's keep-vs-compact boundary uses a token estimate. UltraCoS ships a
+The codec's keep-vs-compact boundary uses a token estimate. Glyphdown ships a
 **calibration snapshot** ([`calibration/`](calibration/)): per-model
 `tokens-per-char` values fitted from real, model-billed token counts, so the
 estimate matches a model's actual tokenizer rather than a fixed assumption. The
@@ -311,23 +311,23 @@ performance figures it has not measured.
 
 ## Observability
 
-UltraCoS writes an append-only audit row per compaction event (savings per tool,
-shape, version) so its effect is measurable, not asserted. `ultracos-stats` reads it.
+Glyphdown writes an append-only audit row per compaction event (savings per tool,
+shape, version) so its effect is measurable, not asserted. `glyphdown-stats` reads it.
 
 ## Quality proof — losslessness is a gate, not a claim
 
 `expand(compress(x)) == x` is a hard invariant in the **shipped, open** codec:
-`Dialect::is_lossless()` in [`ultracos-core/src/codec.rs`](ultracos-core/src/codec.rs)
+`Dialect::is_lossless()` in [`glyphdown-core/src/codec.rs`](glyphdown-core/src/codec.rs)
 self-checks every dialect on load and falls back to the bundled default on any
 collision, and the Rust unit tests assert the round-trip for all compiled-in dialect
 pairs. A release gate runs that same proof before every publish, so a dialect change
 can never silently break the round-trip. The codec source is fully open — verify it
-yourself with `ultracos-core compress | ultracos-core expand`.
+yourself with `glyphdown-core compress | glyphdown-core expand`.
 
 ## FAQ
 
 **How do I reduce Claude Code token costs?**
-Install UltraCoS (`claude plugin install ultracos`). It losslessly compacts
+Install Glyphdown (`claude plugin install glyphdown`). It losslessly compacts
 tool-result output, deduplicates repeated context, and compresses the system
 prompt — stacking on top of Anthropic's prompt cache. No API key, no signup.
 
@@ -346,13 +346,13 @@ the estimate honest. See [General vs model-specific savings](#general-vs-model-s
 **How much does it actually save?**
 −31.7% on a 52-fixture tool-heavy corpus, −71.1% on large `Bash` dumps, −44.6% on
 instruction prose in the dialect (Claude Opus tokens). Your numbers depend on
-your workload and model — run `ultracos-stats` to measure your own.
+your workload and model — run `glyphdown-stats` to measure your own.
 
 **How is it different from LLMLingua, claw-compactor, or a proxy like Edgee?**
-LLMLingua is a learned, *lossy* prompt compressor (it drops tokens); UltraCoS is
+LLMLingua is a learned, *lossy* prompt compressor (it drops tokens); Glyphdown is
 lossless and in-process. claw-compactor is a lossless multi-stage pipeline;
-UltraCoS targets agent tool-results + compaction specifically and stacks on the
-cache. Edgee is a hosted edge proxy (network hop); UltraCoS runs on your machine
+Glyphdown targets agent tool-results + compaction specifically and stacks on the
+cache. Edgee is a hosted edge proxy (network hop); Glyphdown runs on your machine
 with no hop. They compose — see [How it compares](#how-it-compares).
 
 **Does it send my data anywhere?**
@@ -360,9 +360,9 @@ No. 100% local, zero network calls, zero API keys. Tool output never leaves your
 machine. Every path is fail-open: on any error the original passes through.
 
 **Can I compress my `CLAUDE.md` / skills / agent files?**
-Yes — `ultracos-core compress-config <file>` previews savings (dry-run by
+Yes — `glyphdown-core compress-config <file>` previews savings (dry-run by
 default), and `--apply` writes them behind a lossless gate with an automatic
-`.ultracos.bak` backup. The system prompt ships on every request, so this is the
+`.glyphdown.bak` backup. The system prompt ships on every request, so this is the
 only always-on saving.
 
 ## License

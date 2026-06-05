@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-UltraCoS is pre-1.0. Only the latest tagged release receives fixes.
+Glyphdown is pre-1.0. Only the latest tagged release receives fixes.
 
 | Version | Supported |
 |---|---|
@@ -11,7 +11,7 @@ UltraCoS is pre-1.0. Only the latest tagged release receives fixes.
 
 ## Reporting a vulnerability
 
-Email **mikko.parkkola@iki.fi** with subject prefix `[ultracos-security]`.
+Email **mikko.parkkola@iki.fi** with subject prefix `[glyphdown-security]`.
 
 - **Expected response**: within 5 business days
 - **Disclosure timeline**: 90-day standard; coordinated disclosure preferred
@@ -21,7 +21,7 @@ Please do **not** open a public GitHub issue for security concerns.
 
 ## Local-only contract (BLOCKING)
 
-UltraCoS makes a hard guarantee:
+Glyphdown makes a hard guarantee:
 
 **No hook, skill, or bundled binary makes outbound network calls.**
 
@@ -41,12 +41,12 @@ is opt-in, off-path, and clearly marked.
 - **No signup.** Install plugin, done.
 - **No API key.** Plugin does not authenticate against anything.
 - **No telemetry.** Audit JSONL stays on disk; never transmitted.
-- **No DPA / SOC2 / BAA dependency on UltraCoS itself.** Compliance posture inherits whatever your local environment already has — UltraCoS adds zero new external trust dependencies.
+- **No DPA / SOC2 / BAA dependency on Glyphdown itself.** Compliance posture inherits whatever your local environment already has — Glyphdown adds zero new external trust dependencies.
 - **Tool output never leaves the device.** Period.
 
 ### Enforcement
 
-The `hooks/PostToolUse/ultracos_codec.py` module imports zero
+The `hooks/PostToolUse/glyphdown_codec.py` module imports zero
 network-capable modules (verified by lint: no `urllib`, no `requests`,
 no `socket`, no `http.client`, no `urllib3`). Future PRs touching the
 hook MUST preserve this invariant; CI will lint for it once internal-ref
@@ -54,10 +54,10 @@ hook MUST preserve this invariant; CI will lint for it once internal-ref
 
 ## Threat model
 
-UltraCoS is a client-side Claude Code plugin. It:
+Glyphdown is a client-side Claude Code plugin. It:
 
 - **Reads** the contents of every tool_result that passes through its
-  PostToolUse hook (`hooks/PostToolUse/ultracos_codec.py`).
+  PostToolUse hook (`hooks/PostToolUse/glyphdown_codec.py`).
 - **Transforms** that content using deterministic regex passes
   (ANSI strip, JSON whitespace minify, blank-line collapse, truncation)
   and emits a modified `updatedToolOutput`.
@@ -92,9 +92,9 @@ UltraCoS is a client-side Claude Code plugin. It:
 - Fail-open on every exception path; the hook contract is to never
   block tool execution even on internal error
 - 5-second timeout cap in hooks.json
-- `ULTRACOS_DISABLE=1` environment variable forces immediate
+- `GLYPHDOWN_DISABLE=1` environment variable forces immediate
   pass-through with no transforms (kill switch)
-- `ULTRACOS_MAX_INPUT_BYTES` caps stdin read; oversized payloads bail
+- `GLYPHDOWN_MAX_INPUT_BYTES` caps stdin read; oversized payloads bail
   to pass-through with an audit row
 - No `eval`, `exec`, `subprocess` (other than in test harness)
 - No file writes outside `~/.ultracos/` and the operator-chosen tee
@@ -102,7 +102,7 @@ UltraCoS is a client-side Claude Code plugin. It:
 
 ## Safe harbor
 
-UltraCoS welcomes good-faith security research. If you make a good-faith effort to comply with this policy during your research, we will:
+Glyphdown welcomes good-faith security research. If you make a good-faith effort to comply with this policy during your research, we will:
 
 - Not pursue legal action against you for accidental, good-faith violations of this policy.
 - Work with you to understand and resolve the issue quickly.
@@ -116,7 +116,7 @@ To qualify for safe harbor:
 - Give us reasonable time to investigate and remediate before any public disclosure (see SLA targets below).
 - Do not perform attacks that target physical safety of users.
 
-This safe harbor applies to security research conducted against the UltraCoS codebase and its bundled artifacts only. It does not extend to third-party systems (Anthropic API, GitHub, Hugging Face). Consult their respective security policies for those.
+This safe harbor applies to security research conducted against the Glyphdown codebase and its bundled artifacts only. It does not extend to third-party systems (Anthropic API, GitHub, Hugging Face). Consult their respective security policies for those.
 
 ## Service-level targets
 
@@ -132,7 +132,7 @@ This safe harbor applies to security research conducted against the UltraCoS cod
 
 ## Hall of Fame
 
-We publicly recognise researchers who responsibly disclose vulnerabilities in UltraCoS. To be listed:
+We publicly recognise researchers who responsibly disclose vulnerabilities in Glyphdown. To be listed:
 
 - Be the first reporter of a previously unknown, valid vulnerability.
 - Follow the coordinated disclosure timeline above.

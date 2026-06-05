@@ -14,7 +14,7 @@ Rationale:
   a hardcoded anchor-survival check that has been proving its weight on
   126-star real-world Claude Code workloads.
 
-Why a separate module (vs inlining in ultracos_codec.py):
+Why a separate module (vs inlining in glyphdown_codec.py):
   - 48 KB codec.py is already dense; adding regex tables hurts readability.
   - Anchor patterns are domain-specific (compilers, test runners, panics)
     and benefit from isolated tests.
