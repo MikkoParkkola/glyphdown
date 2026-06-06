@@ -1,11 +1,21 @@
 #!/usr/bin/env python3
 """glyphdown PreToolUse history-dedup ring (internal-ref).
 
-Detects consecutive duplicate tool calls within 5 minutes and emits advisory
-warning via additionalContext. Rolling 10-call ring per session_id, persisted
-to ~/.ultracos/history_ring.json. Fail-open: never blocks.
+Detects consecutive duplicate tool calls within 5 minutes. Two modes:
 
-Audit trail: ~/.ultracos/audit.jsonl event="history-dedup-warn"
+  - WARN (default): emit advisory via additionalContext, never block.
+  - DEDUP-SERVE (opt-in, GLYPHDOWN_DEDUP_SERVE=1): for idempotent Read calls
+    only, deny the redundant re-read and point the model at its prior result.
+    The prior tool result is still in context (median dup gap ~19s), so a
+    ~30-token pointer replaces a multi-KB re-injection. Bash and all
+    write-capable tools are EXCLUDED; any write-capable tool observed after
+    the prior read invalidates the serve (Read-after-Edit stays correct).
+
+Rolling 10-call ring per session_id, persisted to ~/.ultracos/history_ring.json.
+Fail-open: any error → allow the call.
+
+Audit trail: ~/.ultracos/audit.jsonl event="history-dedup-warn" (always) plus
+event="history-dedup-serve" when a re-read is actually short-circuited.
 """
 
 from __future__ import annotations
@@ -19,6 +29,23 @@ from pathlib import Path
 
 _RING_SIZE = 10
 _DEDUP_WINDOW_SECS = 300  # 5 minutes
+
+# Dedup-serve scope: only tools whose result is a pure function of their args
+# (no side effects, no time dependence) are safe to short-circuit.
+_IDEMPOTENT_READ_TOOLS = frozenset({"Read"})
+
+# Any of these observed AFTER the prior read means the read's result may have
+# changed — invalidate the serve and let the re-read proceed. Bash is included
+# because it can write files invisibly (e.g. `echo > f`); correctness over
+# savings.
+_WRITE_CAPABLE_TOOLS = frozenset(
+    {"Edit", "Write", "MultiEdit", "NotebookEdit", "Bash"}
+)
+
+
+def _dedup_serve_enabled() -> bool:
+    """Opt-in gate. Default OFF preserves byte-identical warn-only behavior."""
+    return os.environ.get("GLYPHDOWN_DEDUP_SERVE", "").strip() in {"1", "true", "yes"}
 
 
 def _data_dir() -> Path:
@@ -115,11 +142,14 @@ def main() -> int:
 
         # Check for recent duplicate
         warn_msg = None
+        prior_ts = None
+        seconds_ago = 0
         for i, entry in enumerate(reversed(ring)):
             ts = entry.get("ts", 0)
             if now - ts > _DEDUP_WINDOW_SECS:
                 break
             if entry.get("tool") == tool_name and entry.get("hash") == args_hash:
+                prior_ts = ts
                 seconds_ago = int(now - ts)
                 warn_msg = (
                     f"[glyphdown] You called {tool_name} with these same args "
@@ -133,6 +163,22 @@ def main() -> int:
                     "seconds_ago": seconds_ago,
                 })
                 break
+
+        # Dedup-serve eligibility (opt-in). Only short-circuit an idempotent
+        # Read whose result cannot have changed since the prior read: no
+        # write-capable tool may have run after prior_ts.
+        serve = False
+        if (
+            prior_ts is not None
+            and _dedup_serve_enabled()
+            and tool_name in _IDEMPOTENT_READ_TOOLS
+        ):
+            mutated_after = any(
+                e.get("tool") in _WRITE_CAPABLE_TOOLS
+                and e.get("ts", 0) > prior_ts
+                for e in ring
+            )
+            serve = not mutated_after
 
         # Update ring: append new entry, prune old, cap at _RING_SIZE
         ring.append({
@@ -160,7 +206,32 @@ def main() -> int:
         all_rings[session_id] = ring
         _save_ring(all_rings)
 
-        # Emit additionalContext if warning fired
+        # Emit response. Dedup-serve denies the redundant read with a pointer;
+        # otherwise allow (with advisory context if a warn fired).
+        if serve:
+            reason = (
+                f"[glyphdown] Redundant Read: you read these exact args "
+                f"{seconds_ago}s ago and no write has touched it since, so the "
+                f"result is unchanged and already in your context above. Reuse "
+                f"that prior result instead of re-reading."
+            )
+            _write_audit({
+                "ts": now,
+                "event": "history-dedup-serve",
+                "tool": tool_name,
+                "session_id": session_id,
+                "seconds_ago": seconds_ago,
+            })
+            resp = {
+                "hookSpecificOutput": {
+                    "hookEventName": "PreToolUse",
+                    "permissionDecision": "deny",
+                    "permissionDecisionReason": reason,
+                }
+            }
+            print(json.dumps(resp))
+            return 0
+
         resp = {"continue": True}
         if warn_msg:
             resp["additionalContext"] = warn_msg
