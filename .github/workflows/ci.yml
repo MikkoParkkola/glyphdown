@@ -35,3 +35,20 @@ jobs:
             --config=.github/osv-scanner.toml
             --recursive
             ./
+
+  # Python hook tests: the hooks/ tree (PreToolUse + PostToolUse) is shipped
+  # behaviour — codec compaction, oversize handling, the dedup-serve ring — but
+  # had no CI coverage, so a regression in a hook could land green. This job
+  # runs the committed pytest suite on every PR and push and BLOCKS on failure,
+  # turning the existing tests from decorative into enforced. Uses ubuntu's
+  # preinstalled python3 (stdlib + pytest only) so no extra action is pinned and
+  # no supply-chain surface is added.
+  hook-tests:
+    name: Python hook tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Install pytest
+        run: python3 -m pip install --user --quiet pytest
+      - name: Run hook test suite
+        run: python3 -m pytest hooks/ -q
