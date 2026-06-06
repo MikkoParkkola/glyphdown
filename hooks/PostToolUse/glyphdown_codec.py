@@ -142,8 +142,6 @@ def _float_env(name: str, default: float) -> float:
 # G13: env-var overrides
 TAG_PREFIX = os.environ.get("GLYPHDOWN_TAG_PREFIX", "[glyphdown:compact-v1")
 DEFAULT_BREAK_EVEN_TOKENS = _int_env("GLYPHDOWN_BREAK_EVEN_TOKENS", 25)
-# SIL-1: env-pinned threshold beats audit-fitted threshold
-BREAK_EVEN_ENV_PINNED = os.environ.get("GLYPHDOWN_BREAK_EVEN_TOKENS", "") != ""
 # internal-ref: percent-based break-even guard at the filter layer. Complements
 # the absolute-token guard so large payloads that compact by only a few
 # tokens (e.g. 30-token ANSI strip on a 5K-token blob) pass through
@@ -378,9 +376,8 @@ _AUDIT_FILE = _AUDIT_DIR / "audit.jsonl"
 
 # internal-ref G2: per-session audit JSONL — append-only per-session file located
 # under HOME/.claude/data/glyphdown/audit-<session_id>.jsonl. Coexists with
-# the global audit.jsonl so the SIL-1 auto-tuner (glyphdown_tuned.load_audit)
-# keeps working. Paths resolved each call so HOME changes in tests are
-# honored.
+# the global audit.jsonl that downstream analysis reads. Paths resolved each
+# call so HOME changes in tests are honored.
 _SESSION_AUDIT_SUBDIR = Path(".claude") / "data" / "glyphdown"
 _FALLBACK_SESSION_ID = "session-unspecified"
 # Restrict session_id chars to a conservative safe set for filenames.
@@ -983,44 +980,19 @@ def main() -> int:
             # No content[] — but structuredContent may still be present
             content_items = []
 
-        # SIL-1: resolve per-tool break-even threshold.
-        # Priority: GLYPHDOWN_BREAK_EVEN_TOKENS env > tuned[shape] > tuned[tool] > DEFAULT.
-        # Shape is the tighter signal — the same tool (Bash) produces both
-        # JSON and ANSI-laden text payloads, and the absolute-token guard
-        # should track the payload shape, not just the producing tool.
-        # Resolved per text item below so shape can be classified once on
-        # the actual payload.
-        if BREAK_EVEN_ENV_PINNED or NO_LEARN:
-            tuned_tool: dict[str, int] = {}
-            tuned_shape: dict[str, int] = {}
-        else:
-            try:
-                from glyphdown_tuned import (  # local import, fail-open
-                    load_shape_thresholds,
-                    load_thresholds,
-                )
-                tuned_tool = load_thresholds()
-                tuned_shape = load_shape_thresholds()
-            except Exception:  # noqa: BLE001
-                tuned_tool = {}
-                tuned_shape = {}
-
-        def _resolve_threshold(payload_text: str) -> int:
-            """Pick break-even threshold for this payload.
-
-            Env-pinned and NO_LEARN already collapse tuned_* to {} above,
-            so this falls through to DEFAULT_BREAK_EVEN_TOKENS in those
-            modes. Otherwise shape > tool > DEFAULT.
-            """
-            if BREAK_EVEN_ENV_PINNED or NO_LEARN:
-                return DEFAULT_BREAK_EVEN_TOKENS
-            if tuned_shape:
-                shape = classify_payload(payload_text)
-                if shape in tuned_shape:
-                    return int(tuned_shape[shape])
-            if tool_name in tuned_tool:
-                return int(tuned_tool[tool_name])
-            return DEFAULT_BREAK_EVEN_TOKENS
+        # SIL-1 (#52): per-tool / per-shape break-even tuner REMOVED.
+        # The adaptive per-tool / per-shape break-even tuner is gone: its
+        # measured effect was a +/-1.5% wash that went NEGATIVE on several
+        # tools, computed over void / too-few samples. In the operator's real
+        # runtime both gates that fed it -- the env-pinned break-even override
+        # and NO_LEARN -- already collapsed the tuned per-tool / per-shape maps
+        # to {} on every call, so DEFAULT_BREAK_EVEN_TOKENS was ALWAYS the
+        # resolved value. Removing the tuner is therefore behavior-preserving
+        # by construction: the static floor is exactly what ran. Break-even is
+        # now the constant DEFAULT_BREAK_EVEN_TOKENS (GLYPHDOWN_BREAK_EVEN_TOKENS
+        # env, def 25), passed directly at each compact_payload call site below
+        # -- no per-payload resolution, no audit.jsonl read, no shape classify
+        # for threshold purposes (classify_payload still serves shape tagging).
 
         any_changed = False
         for item in content_items:
@@ -1140,7 +1112,7 @@ def main() -> int:
                 except Exception:  # noqa: BLE001 — fail-open
                     pass
 
-            result = compact_payload(text, break_even_tokens=_resolve_threshold(text))
+            result = compact_payload(text, break_even_tokens=DEFAULT_BREAK_EVEN_TOKENS)
 
             # SIL-2: record the actual saved_tokens for this bucket so the
             # rolling mean converges. Update even when applied is empty —
@@ -1253,7 +1225,7 @@ def main() -> int:
 
                 # internal-ref G12: min-payload threshold check for structuredContent too
                 if struct_bytes >= DEFAULT_MIN_PAYLOAD_BYTES:
-                    result = compact_payload(struct_text, break_even_tokens=_resolve_threshold(struct_text))
+                    result = compact_payload(struct_text, break_even_tokens=DEFAULT_BREAK_EVEN_TOKENS)
 
                     if result.applied:
                         # Parse the compacted text back to JSON

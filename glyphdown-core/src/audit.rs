@@ -1,16 +1,16 @@
 //! audit — append-only audit log writer (G2 / internal-ref), Rust port of the
 //! python codec's `_write_audit`. Restores PRODUCTION OBSERVABILITY for the
 //! default Rust codec: without these rows the rust hot path is a measurement
-//! black hole, and `glyphdown_tuned` (SIL-1) has no data to fit per-tool
-//! break-even thresholds from on rust-served sessions.
+//! black hole, with no record of compaction outcomes (saved tokens, shape,
+//! per-tool volume) from rust-served sessions for downstream analysis.
 //!
 //! Writes each row to TWO independent destinations (each fail-open):
-//!   1. GLOBAL  <data_dir>/audit.jsonl            (feeds SIL-1 auto-tuner)
+//!   1. GLOBAL  <data_dir>/audit.jsonl            (global outcome log)
 //!   2. SESSION ~/.claude/data/glyphdown/audit-<session>.jsonl  (internal-ref)
 //! NB the two roots differ: global honors GLYPHDOWN_DATA_DIR / ~/.ultracos;
 //! per-session is always under HOME/.claude/data/glyphdown (matching python).
 //!
-//! SCOPE: load-bearing fields only. SIL-1 consumes {event,ts,tool,saved_tokens,
+//! SCOPE: load-bearing fields only. Downstream analysis consumes {event,ts,tool,saved_tokens,
 //! shape}. The python `cache_class` + `volatile` cohort fields are intentionally
 //! NOT emitted here (only audit_cohort.py reads them, and it uses .get()); that
 //! is a documented gap, not a correctness issue.
