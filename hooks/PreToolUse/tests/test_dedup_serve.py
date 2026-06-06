@@ -162,3 +162,63 @@ def test_stale_duplicate_outside_window_not_served(monkeypatch):
     assert rc == 0
     assert resp.get("continue") is True
     assert "hookSpecificOutput" not in resp
+
+
+def _audit_events(hook, event):
+    audit = hook._AUDIT_FILE.read_text(encoding="utf-8")
+    return [
+        json.loads(ln)
+        for ln in audit.splitlines()
+        if ln.strip() and json.loads(ln).get("event") == event
+    ]
+
+
+def test_warn_event_carries_saved_tokens_for_real_read(monkeypatch, tmp_path):
+    """Default warn mode quantifies would-have-saved volume via os.stat proxy."""
+    hook = _load_hook(monkeypatch)  # gate OFF — warn only
+    real = tmp_path / "data.txt"
+    real.write_bytes(b"x" * 4000)  # 4000 bytes -> ~1000 tokens est
+    p = _read_payload(path=str(real))
+    _seed_prior(hook, monkeypatch, p)
+    _run(hook, monkeypatch, p)  # duplicate
+    warns = _audit_events(hook, "history-dedup-warn")
+    assert warns, "expected a warn audit event"
+    assert warns[-1]["saved_bytes"] == 4000
+    assert warns[-1]["saved_tokens_est"] == 1000
+
+
+def test_serve_event_carries_saved_tokens(monkeypatch, tmp_path):
+    hook = _load_hook(monkeypatch, GLYPHDOWN_DEDUP_SERVE="1")
+    real = tmp_path / "data.txt"
+    real.write_bytes(b"y" * 800)
+    p = _read_payload(path=str(real))
+    _seed_prior(hook, monkeypatch, p)
+    _run(hook, monkeypatch, p)
+    serves = _audit_events(hook, "history-dedup-serve")
+    assert serves and serves[-1]["saved_tokens_est"] == 200
+
+
+def test_missing_file_omits_size_fields_no_crash(monkeypatch):
+    """os.stat failure is fail-open: warn still fires, no size keys."""
+    hook = _load_hook(monkeypatch)
+    p = _read_payload(path="/nonexistent/path/never.txt")
+    _seed_prior(hook, monkeypatch, p)
+    rc, resp = _run(hook, monkeypatch, p)
+    assert rc == 0
+    warns = _audit_events(hook, "history-dedup-warn")
+    assert warns and "saved_bytes" not in warns[-1]
+
+
+def test_bash_dup_has_no_size_estimate(monkeypatch):
+    """Non-Read tools never carry a size estimate (no file_path proxy)."""
+    hook = _load_hook(monkeypatch)
+    bash = {
+        "tool_name": "Bash",
+        "session_id": "s1",
+        "tool_input": {"command": "git status"},
+    }
+    _seed_prior(hook, monkeypatch, bash)
+    _run(hook, monkeypatch, bash)
+    warns = _audit_events(hook, "history-dedup-warn")
+    assert warns and "saved_bytes" not in warns[-1]
+

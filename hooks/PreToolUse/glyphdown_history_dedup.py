@@ -82,6 +82,32 @@ def _normalize_args(tool_input: dict) -> str:
         return ""
 
 
+def _estimate_read_result_size(
+    tool_name: str, tool_input: dict
+) -> tuple[int | None, int | None]:
+    """Cheap PreToolUse proxy for a Read's result size, as (bytes, tokens_est).
+
+    The hook never sees tool results, but for a Read the file_path is already in
+    tool_input, so os.stat gives the on-disk byte size — a proxy for the bytes a
+    redundant re-read would re-inject into context. ~4 bytes/token is the
+    standard rough estimate. This lets the audit quantify would-have-saved
+    volume in DEFAULT warn-only mode, decoupling measurement from flipping the
+    serve gate. Returns (None, None) for non-Read tools or any stat error
+    (fail-open). Approximate by construction: the Read tool adds line-number
+    prefixes and may truncate large files, so treat as order-of-magnitude.
+    """
+    if tool_name not in _IDEMPOTENT_READ_TOOLS:
+        return None, None
+    path = tool_input.get("file_path")
+    if not path or not isinstance(path, str):
+        return None, None
+    try:
+        size = os.stat(os.path.expanduser(path)).st_size
+    except OSError:
+        return None, None
+    return size, size // 4
+
+
 def _write_audit(row: dict) -> None:
     """Append-only audit JSONL. Fail-open on any I/O error."""
     try:
@@ -144,6 +170,9 @@ def main() -> int:
         warn_msg = None
         prior_ts = None
         seconds_ago = 0
+        saved_bytes, saved_tokens_est = _estimate_read_result_size(
+            tool_name, tool_input
+        )
         for i, entry in enumerate(reversed(ring)):
             ts = entry.get("ts", 0)
             if now - ts > _DEDUP_WINDOW_SECS:
@@ -161,6 +190,14 @@ def main() -> int:
                     "tool": tool_name,
                     "session_id": session_id,
                     "seconds_ago": seconds_ago,
+                    **(
+                        {
+                            "saved_bytes": saved_bytes,
+                            "saved_tokens_est": saved_tokens_est,
+                        }
+                        if saved_bytes is not None
+                        else {}
+                    ),
                 })
                 break
 
@@ -221,6 +258,14 @@ def main() -> int:
                 "tool": tool_name,
                 "session_id": session_id,
                 "seconds_ago": seconds_ago,
+                **(
+                    {
+                        "saved_bytes": saved_bytes,
+                        "saved_tokens_est": saved_tokens_est,
+                    }
+                    if saved_bytes is not None
+                    else {}
+                ),
             })
             resp = {
                 "hookSpecificOutput": {
