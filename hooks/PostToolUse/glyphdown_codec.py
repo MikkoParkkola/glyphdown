@@ -158,6 +158,16 @@ DEFAULT_TRUNCATE_BYTES = _int_env("GLYPHDOWN_TRUNCATE_BYTES", 8192)
 # against pathological tool outputs that would burn CPU + memory inside the
 # compaction pipeline. Override with GLYPHDOWN_MAX_INPUT_BYTES.
 MAX_INPUT_BYTES = _int_env("GLYPHDOWN_MAX_INPUT_BYTES", 5 * 1024 * 1024)
+# FIX #51: oversize truncate-then-compact. When stdin exceeds MAX_INPUT_BYTES
+# the historical behaviour was a raw passthrough ({"continue": true}) that
+# captured zero tokens — the largest payloads were the ones dumped to context
+# uncompressed. With this flag ON (default), the codec instead bounds the head
+# to MAX_INPUT_BYTES via truncate_with_marker and runs the normal compaction
+# path on the bounded text, recovering tokens that would otherwise be lost.
+# The MAX_INPUT_BYTES cap is preserved verbatim (stdin is still read at most
+# MAX_INPUT_BYTES + 1), so the CPU/mem guard is intact. Opt out with
+# GLYPHDOWN_OVERSIZE_COMPACT=0 to restore byte-identical raw passthrough.
+OVERSIZE_COMPACT = _bool_env("GLYPHDOWN_OVERSIZE_COMPACT", default=True)
 # G13: emergency kill switch
 DISABLED = _bool_env("GLYPHDOWN_DISABLE", default=False)
 # SIL-1: opt out of audit-driven auto-tuning
@@ -904,9 +914,45 @@ def main() -> int:
             print(json.dumps({"continue": True}))
             return 0
 
-        # G14: oversize bail. Read at most MAX_INPUT_BYTES + 1 to detect overflow.
+        # G14: oversize handling. Read at most MAX_INPUT_BYTES + 1 to detect
+        # overflow — this preserves the CPU/mem cap regardless of mode below.
         raw = sys.stdin.read(MAX_INPUT_BYTES + 1)
         if len(raw) > MAX_INPUT_BYTES:
+            # FIX #51: truncate-then-compact. Instead of a zero-capture raw
+            # passthrough, bound the head to MAX_INPUT_BYTES and run the normal
+            # compaction path on it. `raw` here is the full hook JSON envelope
+            # truncated mid-string by read(MAX+1), so json.loads(raw) would
+            # fail — we deliberately treat the bounded head as opaque text and
+            # wrap the compacted result in a synthetic tool_response. The
+            # recovery is the *bounding* (unbounded → ≤ MAX), so we emit the
+            # bounded head even when compact_payload returns a passthrough
+            # (incompressible / language-data). Fail-open on any error reverts
+            # to the historical raw passthrough.
+            if OVERSIZE_COMPACT:
+                try:
+                    head, _hidden = truncate_with_marker(raw, MAX_INPUT_BYTES)
+                    result = compact_payload(head)
+                    new_resp = {
+                        "content": [{"type": "text", "text": result.output}],
+                    }
+                    _write_audit({
+                        "ts": time.time(),
+                        "event": "oversize-compact",
+                        "input_bytes": len(raw),
+                        "max_bytes": MAX_INPUT_BYTES,
+                        "shape": result.shape,
+                        "applied": result.applied,
+                        "bounded_tokens": result.original_tokens,
+                        "compact_tokens": result.compact_tokens,
+                        "saved_tokens": result.saved_tokens,
+                    })
+                    print(json.dumps({
+                        "continue": True,
+                        "updatedToolOutput": new_resp,
+                    }))
+                    return 0
+                except Exception:  # noqa: BLE001 — fail-open to raw passthrough
+                    pass
             _write_audit({
                 "ts": time.time(),
                 "event": "oversize-bail",
