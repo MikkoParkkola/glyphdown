@@ -5,8 +5,8 @@
 //!   3. POSIX: `~/.ultracos`
 //!
 //! NOTE: the on-disk default keeps the legacy `ultracos` name even after the
-//! glyphdown brand rename — renaming it would orphan existing audit/cache/
-//! tuned state. Migration-safe: leave the path, rename only the env-var knob.
+//! glyphdown brand rename — renaming it would orphan existing audit/cache
+//! state. Migration-safe: leave the path, rename only the env-var knob.
 //!
 //! Read-only here — directory creation is the writers' responsibility;
 //! if the dir is missing, that's a "no data yet" state we report.

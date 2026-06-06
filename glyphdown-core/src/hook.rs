@@ -20,12 +20,11 @@
 //!   bench/equiv_guards_rust_vs_python.py (signature 40/40, anchor-revert 55/55,
 //!   cache interop PASS, dedup-parity 104/104, end-to-end 52/52). That makes the
 //!   default flip token-safe. Audit rows (observability for the default rust
-//!   path; feeds SIL-1) are also emitted — audit-row parity 22/22. DEFERRED
+//!   path; downstream analysis only) are also emitted — audit-row parity 22/22. DEFERRED
 //!   (python-only, NONE are token-savers): SIL-2 learned skip-policy +
 //!   min-payload/allowlist gates (these SKIP compaction — rust compacts a
-//!   superset), the A/B no-tag experiment (~10% cohort; rust ships the with-tag
-//!   control), and reading SIL-1 tuned thresholds (no production writer exists,
-//!   so it would be a cold-start no-op). Set GLYPHDOWN_RUST=0 for python.
+//!   superset) and the A/B no-tag experiment (~10% cohort; rust ships the
+//!   with-tag control). Set GLYPHDOWN_RUST=0 for python.
 
 use std::io::Read;
 
