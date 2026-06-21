@@ -3,7 +3,7 @@ name = "glyphdown-core"
 version = "0.5.0"
 edition = "2024"
 description = "glyphdown local MCP server — stats + signed-CCR + room for cache-similarity oracle"
-license = "MIT OR Apache-2.0"
+license = "LicenseRef-PolyForm-Noncommercial-1.0.0"
 
 [[bin]]
 name = "glyphdown-core"
