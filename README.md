@@ -104,7 +104,7 @@ directly; `compress-config` applies it to your config files (dry-run + backup + 
 ## Quickstart — first 5 minutes
 
 ```sh
-claude plugin marketplace add MikkoParkkola/glyphdown
+claude plugin marketplace add MikkoParkkola/claude-marketplace
 claude plugin install glyphdown
 ```
 
