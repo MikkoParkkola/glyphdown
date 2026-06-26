@@ -6,8 +6,8 @@
     "name": "Mikko Parkkola",
     "email": "mikko.parkkola@iki.fi"
   },
-  "homepage": "https://github.com/MikkoParkkola/claude-plugins",
-  "repository": "https://github.com/MikkoParkkola/claude-plugins",
+  "homepage": "https://github.com/MikkoParkkola/glyphdown",
+  "repository": "https://github.com/MikkoParkkola/glyphdown",
   "license": "MIT",
   "category": "Token Optimization",
   "keywords": [
