@@ -1,7 +1,7 @@
 {
   "name": "glyphdown",
   "version": "0.5.0",
-  "description": "Two-register prompting convention for Claude Code: dense ASCII form for internal reasoning, normal prose for user-visible output. Deterministic codec, runs locally, no API key and no vendor account. Ships a skill and five hooks enabled on install (SessionStart, UserPromptSubmit, PreToolUse, PreCompact, PostToolUse), plus a lossless tool-result codec (ANSI strip + JSON minify + blank-collapse + trailing marker + data-shape guard + schema-tag prefix + break-even guard). Fail-open on every path.",
+  "description": "Two-register prompting convention for Claude Code: dense ASCII form for internal reasoning, normal prose for user-visible output. Deterministic codec, runs locally, no API key and no vendor account. Ships a skill and eight hooks across five events enabled on install (SessionStart, UserPromptSubmit, PreToolUse, PreCompact, PostToolUse), plus a lossless tool-result codec (ANSI strip + JSON minify + blank-collapse + trailing marker + data-shape guard + schema-tag prefix + break-even guard). Fail-open on every path.",
   "author": {
     "name": "Mikko Parkkola",
     "email": "mikko.parkkola@iki.fi"
