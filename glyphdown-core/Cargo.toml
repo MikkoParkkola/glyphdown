@@ -1,6 +1,6 @@
 [package]
 name = "glyphdown-core"
-version = "0.5.0"
+version = "0.6.0"
 edition = "2024"
 description = "glyphdown local MCP server — stats + signed-CCR + room for cache-similarity oracle"
 license = "LicenseRef-PolyForm-Noncommercial-1.0.0"
