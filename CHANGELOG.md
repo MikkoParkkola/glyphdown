@@ -6,6 +6,20 @@ All notable changes to Glyphdown (formerly UltraCoS). Format: [Keep a Changelog]
 > release entries below intentionally retain the original `UltraCoS` / `ULTRACOS_*`
 > names as they were shipped — they are a factual record and are not rewritten.
 
+## [0.6.0] - 2026-09-04
+
+### Changed
+
+- Product and notation brand is Glyphdown. Plugin install references
+  point at the public marketplace, not a private repo.
+- `glyphdown-core` license is PolyForm Noncommercial 1.0.0.
+
+### Added
+
+- Oversize codec payloads truncate-then-compact instead of bailing.
+- Opt-in Read dedup-serve for the history-dedup hook, with a size-proxy
+  audit on read-dup.
+
 ## [0.5.0]
 
 ### Added
